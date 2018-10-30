@@ -1,9 +1,9 @@
-%include "boot32.inc"
+%include "src/boot32.inc"
 
 section .boot32
 align 4
 bits 32
-global _start
+global _start32
 
 extern vga_buffer
 extern stack_top
@@ -14,7 +14,7 @@ extern page_id_pd
 extern _start64
 
 ; this is the multiboot entry point, we are in 32 bit protected mode now
-_start:
+_start32:
     ; setup temporary stack
     mov esp, stack_top
     mov ebp, esp

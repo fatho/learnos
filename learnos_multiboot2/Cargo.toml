@@ -1,0 +1,15 @@
+[package]
+name = "learnos_multiboot2"
+version = "0.1.0"
+authors = ["Fabian Thorand <f.thorand@gmail.com>"]
+edition = "2018"
+build = "build.rs"
+
+[lib]
+name = "learnos_multiboot2"
+crate-type = ["staticlib"]
+
+[dependencies]
+
+[build-dependencies]
+nasm-rs = "0.1.3"

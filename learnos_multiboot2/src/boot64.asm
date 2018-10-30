@@ -4,13 +4,14 @@ bits 64
 
 global _start64
 extern vga_buffer
+extern rust_main
 
 _start64:
     ; expects multiboot information table in EBX
     call cls64
     mov esi, msg_so_long
     call print64
-    jmp halt64
+    jmp rust_main
 
 print64:
     ; Print the status message pointed to by ESI to the VGA buffer
@@ -33,12 +34,6 @@ cls64:
     mov edi, vga_buffer
     rep stosw
     ret
-
-halt64:
-    ; stop doing anything useful
-    hlt
-    jmp halt64
-
 
 section .boot64.rodata
 

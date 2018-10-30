@@ -1,41 +1,41 @@
-.PHONY: build clean
-
-AS	:= nasm
-ASFLAGS	:= -f elf64
+CONFIG := debug
 
 LD := ld
-LDFLAGS	:= -z max-page-size=0x1000
-
-LINK_FILE := linker.ld
-TARGET_NAME := boot.elf
-ISO_NAME := boot.iso
+LDFLAGS := -z max-page-size=0x1000 --whole-archive
+LDSCRIPT := learnos_multiboot2/linker.ld
 
 BUILD_DIR := ./build
+BOOT_ISO := ./build/boot.iso
 
-BOOTLOADER_SRC_DIR := ./bootloader
-BOOTLOADER_BUILD_DIR := $(BUILD_DIR)/bootloader
+GRUB_CFG := ./image/grub.cfg
 
-BOOTLOADER_SRC_LIST := $(wildcard $(BOOTLOADER_SRC_DIR)/*.asm)
-BOOTLOADER_OBJ_LIST := $(patsubst $(BOOTLOADER_SRC_DIR)/%.asm,$(BOOTLOADER_BUILD_DIR)/%.asm.o,$(BOOTLOADER_SRC_LIST))
+MULTIBOOT_NAME := learnos_multiboot2
 
-build: $(BUILD_DIR)/$(ISO_NAME)
+MULTIBOOT_BIN := $(BUILD_DIR)/$(MULTIBOOT_NAME)
+MULTIBOOT_LIB := ./target/x86_64-learnos/$(CONFIG)/lib$(MULTIBOOT_NAME).a
+MULTIBOOT_LIB_DEBUG := ./target/x86_64-learnos/debug/lib$(MULTIBOOT_NAME).a
+MULTIBOOT_LIB_RELEASE := ./target/x86_64-learnos/release/lib$(MULTIBOOT_NAME).a
+
+build: $(BOOT_ISO)
 
 clean:
 	rm -rf $(BUILD_DIR)
+	cargo clean
 
-$(BUILD_DIR)/$(ISO_NAME): $(BUILD_DIR)/$(TARGET_NAME) $(BOOTLOADER_SRC_DIR)/grub.cfg
+$(BOOT_ISO): $(MULTIBOOT_BIN) $(GRUB_CFG)
 	mkdir -p $(BUILD_DIR)/iso/boot/grub
-	cp $(BOOTLOADER_SRC_DIR)/grub.cfg $(BUILD_DIR)/iso/boot/grub/grub.cfg
-	cp $(BUILD_DIR)/$(TARGET_NAME) $(BUILD_DIR)/iso/boot/$(TARGET_NAME)
-	grub-mkrescue -o $(BUILD_DIR)/$(ISO_NAME) $(BUILD_DIR)/iso
+	cp $(GRUB_CFG) $(BUILD_DIR)/iso/boot/grub/grub.cfg
+	cp $(MULTIBOOT_BIN) $(BUILD_DIR)/iso/boot/$(MULTIBOOT_NAME)
+	grub-mkrescue -o $(BOOT_ISO) $(BUILD_DIR)/iso
 
-$(BUILD_DIR)/$(TARGET_NAME): $(BOOTLOADER_OBJ_LIST) $(LINK_FILE)
-	echo $(BOOTLOADER_SRC_LIST)
-	echo $(BOOTLOADER_OBJ_LIST)
-	mkdir -p $(@D)
-	$(LD) $(LDFLAGS) -T $(LINK_FILE) -o $(BUILD_DIR)/$(TARGET_NAME) $(BOOTLOADER_OBJ_LIST)
+$(MULTIBOOT_BIN): $(MULTIBOOT_LIB) $(LDSCRIPT)
+	mkdir -p $(BUILD_DIR)
+	ld $(LDFLAGS) -T $(LDSCRIPT) -o $(MULTIBOOT_BIN) $(MULTIBOOT_LIB)
 
+$(MULTIBOOT_LIB_DEBUG):
+	cargo xbuild --target x86_64-learnos
 
-$(BOOTLOADER_BUILD_DIR)/%.asm.o: $(BOOTLOADER_SRC_DIR)/%.asm
-	mkdir -p $(@D)
-	$(AS) $(ASFLAGS) -i$(BOOTLOADER_SRC_DIR)/ $< -o $@
+$(MULTIBOOT_LIB_RELEASE):
+	cargo xbuild --target x86_64-learnos --release
+
+.PHONY: build clean $(MULTIBOOT_LIB_DEBUG) $(MULTIBOOT_LIB_RELEASE)

@@ -1,0 +1,2 @@
+[target.x86_64-learnos]
+rustflags = ["-C", "link-arg=-Tlearnos_multiboot2/linker.ld"]

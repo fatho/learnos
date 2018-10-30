@@ -1,5 +1,5 @@
 OUTPUT_FORMAT(elf64-x86-64)
-ENTRY(_start)
+ENTRY(_start32)
 
 SECTIONS
 {   
@@ -9,20 +9,28 @@ SECTIONS
     /* Kernel code should be loaded at 1M */
     . = 1M;
     
-    .boot ALIGN(4K) :
+    .text ALIGN(4K) :
     {   
         KEEP(*(.multiboot2))
         *(.boot32)
-        *(.boot32.rodata)
         *(.boot64)
+        *(.text*)
+    }
+
+    .rodata ALIGN(4K) :
+    {
+        *(.boot32.rodata)
         *(.boot64.rodata)
+        *(.rodata*)
+    }
+
+    .data ALIGN(4K) :
+    {
+        *(.data*)
     }
 
     .bss ALIGN(4K) :
     {
-        /* reserve 4K of stack space */
-        . += 4K;
-        stack_top = .;
         /* reserve page tables */
         . += 4K;
         page_id_pml4 = .;
@@ -30,5 +38,8 @@ SECTIONS
         page_id_pdp = .;
         . += 4K;
         page_id_pd = .;
+        /* reserve 8K of stack space */
+        . += 8K;
+        stack_top = .;
     }
 }

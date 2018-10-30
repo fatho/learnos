@@ -1,0 +1,3 @@
+# Cargo.toml
+[workspace]
+members = ["learnos_multiboot2"]
