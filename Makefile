@@ -1,4 +1,4 @@
-.PHONY: build
+.PHONY: build clean
 
 AS	:= nasm
 ASFLAGS	:= -f elf64
@@ -20,6 +20,9 @@ BOOTLOADER_OBJ_LIST := $(patsubst $(BOOTLOADER_SRC_DIR)/%.asm,$(BOOTLOADER_BUILD
 
 build: $(BUILD_DIR)/$(ISO_NAME)
 
+clean:
+	rm -rf $(BUILD_DIR)
+
 $(BUILD_DIR)/$(ISO_NAME): $(BUILD_DIR)/$(TARGET_NAME) $(BOOTLOADER_SRC_DIR)/grub.cfg
 	mkdir -p $(BUILD_DIR)/iso/boot/grub
 	cp $(BOOTLOADER_SRC_DIR)/grub.cfg $(BUILD_DIR)/iso/boot/grub/grub.cfg
@@ -35,4 +38,4 @@ $(BUILD_DIR)/$(TARGET_NAME): $(BOOTLOADER_OBJ_LIST) $(LINK_FILE)
 
 $(BOOTLOADER_BUILD_DIR)/%.asm.o: $(BOOTLOADER_SRC_DIR)/%.asm
 	mkdir -p $(@D)
-	$(AS) $(ASFLAGS) $< -o $@
+	$(AS) $(ASFLAGS) -i$(BOOTLOADER_SRC_DIR)/ $< -o $@
