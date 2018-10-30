@@ -1,4 +1,6 @@
-CONFIG := debug
+CONFIG := release
+
+QEMU := qemu-system-x86_64
 
 LD := ld
 LDFLAGS := -z max-page-size=0x1000 --whole-archive
@@ -17,6 +19,9 @@ MULTIBOOT_LIB_DEBUG := ./target/x86_64-learnos/debug/lib$(MULTIBOOT_NAME).a
 MULTIBOOT_LIB_RELEASE := ./target/x86_64-learnos/release/lib$(MULTIBOOT_NAME).a
 
 build: $(BOOT_ISO)
+
+run: build
+	qemu-system-x86_64 -cdrom $(BOOT_ISO)
 
 clean:
 	rm -rf $(BUILD_DIR)
@@ -38,4 +43,4 @@ $(MULTIBOOT_LIB_DEBUG):
 $(MULTIBOOT_LIB_RELEASE):
 	cargo xbuild --target x86_64-learnos --release
 
-.PHONY: build clean $(MULTIBOOT_LIB_DEBUG) $(MULTIBOOT_LIB_RELEASE)
+.PHONY: run build clean $(MULTIBOOT_LIB_DEBUG) $(MULTIBOOT_LIB_RELEASE)
