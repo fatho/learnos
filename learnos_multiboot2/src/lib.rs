@@ -4,28 +4,27 @@
 #![feature(naked_functions)]
 #![feature(link_args)]
 
+mod addr;
+mod vga;
+mod console;
+
 #[cfg(not(test))]
 use core::panic::PanicInfo;
-
-#[repr(C, packed)]
-struct VgaBufferEntry {
-    vga_char: u8,
-    vga_color: u8,
-}
-
-const VGA_BUFFER_ADDR: u64 = 0xB8000;
 
 #[no_mangle]
 #[cfg(not(test))]
 pub extern "C" fn rust_main() -> ! {
-    unsafe {
-        let vga_buffer_ptr = VGA_BUFFER_ADDR as *mut VgaBufferEntry;
-        let mut vga_buffer = core::slice::from_raw_parts_mut(vga_buffer_ptr, 2000);
-        vga_buffer[0] = VgaBufferEntry {
-            vga_color: 0x0F,
-            vga_char: 'T' as u8
-        }
+    // initialize VGA buffer
+    let vgabuf = unsafe { vga::Vga::with_addr(vga::VGA_PHYS_ADDR.identity_mapping()) };
+    let mut console = console::Console::new(vgabuf);
+    console.write(b"Hello World, it works!\n");
+    console.write(b"Even with newlines\nIt's fantastic");
+    console.write(b", really.\n");
+    for i in 0..30 {
+        console.write(b"This is repeated a few times and should wrap around\n");
     }
+    let msg = format!("Oh no {} ", 123);
+    console.write(b"A long text spanning more than eighty characters - which is not a lot I must note, as you can easily reach these lengths - should wrap around at the end of the line.\n");
     loop {}
 }
 
