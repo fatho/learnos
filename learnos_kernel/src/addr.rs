@@ -14,13 +14,6 @@ pub struct PhysAddr(pub u64);
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Debug)]
 pub struct PhysAddr32(pub u32);
 
-impl PhysAddr {
-    /// Convert a physical address to a virtual address assuming identity mapping.
-    pub fn identity_mapping(self) -> VirtAddr {
-        VirtAddr(self.0)
-    }
-}
-
 impl PhysAddr32 {
     /// Re-interpret a 32 bit address as 64 bit.
     pub fn extend(self) -> PhysAddr {
