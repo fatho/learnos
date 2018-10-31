@@ -13,14 +13,12 @@ SECTIONS
     {   
         KEEP(*(.multiboot2))
         *(.boot32)
-        *(.boot64)
         *(.text*)
     }
 
     .rodata ALIGN(4K) :
     {
         *(.boot32.rodata)
-        *(.boot64.rodata)
         *(.rodata*)
     }
 

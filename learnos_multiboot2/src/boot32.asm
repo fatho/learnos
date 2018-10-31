@@ -11,7 +11,7 @@ extern page_id_pml4
 extern page_id_pdp
 extern page_id_pd
 
-extern _start64
+extern rust_main
 
 ; this is the multiboot entry point, we are in 32 bit protected mode now
 _start32:
@@ -38,9 +38,10 @@ _start32:
     ; inform that we're done and jump to long mode
     mov esi, msg_ok
     call print32
-    ; restore multiboot pointer before jumping to long mode
-    pop ebx
-    jump_to_64 _start64
+    ; Restore multiboot pointer into EDI, passing it as the first argument to rust_main
+    ; This is because `rust_main` expects System V AMD64 ABI calling convention
+    pop edi
+    jump_to_64 rust_main
 
 
 setup_identity_mapping:
