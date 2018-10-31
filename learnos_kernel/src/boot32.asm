@@ -7,9 +7,11 @@ global _start32
 
 extern vga_buffer
 extern stack_top
-extern page_id_pml4
-extern page_id_pdp
-extern page_id_pd
+extern page_tbl_pml4
+extern page_tbl_pdp_low
+extern page_tbl_pdp_high
+extern page_tbl_pd_1
+extern page_tbl_pd_2
 
 extern rust_main
 
@@ -28,11 +30,11 @@ _start32:
     ; TODO: check availability of 2 MB pages
     ; TODO: future-proof this by checking for 5th page level
 
-    call setup_identity_mapping
+    call setup_page_tables
     
     enable_long_mode_feature
     enable_pae
-    load_page_table page_id_pml4
+    load_page_table page_tbl_pml4
     enable_paging
     
     ; inform that we're done and jump to long mode
@@ -44,28 +46,56 @@ _start32:
     jump_to_64 rust_main
 
 
-setup_identity_mapping:
+setup_page_tables:
     ; clear page tables (1024 * 4 bytes)
-    clear4 page_id_pml4, 1024
-    clear4 page_id_pdp, 1024
-    clear4 page_id_pd, 1024
-    ; only map 1st entry of PML4 to PDP, corresponds to lowest 512 GiB of physical memory
-    mov   eax, page_id_pdp
+    clear4 page_tbl_pml4, 1024
+    clear4 page_tbl_pdp_low, 1024
+    clear4 page_tbl_pd_1, 1024
+
+    ; PML4[0] -> page_tbl_pdp_low
+    mov   eax, page_tbl_pdp_low
     or    eax, 0b11
-    mov   DWORD [page_id_pml4], eax
-    ; only map 1st entry of PDP, corresponds to lowest 1 GiB of physical memory
-    mov   eax, page_id_pd
+    mov   DWORD [page_tbl_pml4], eax
+    ; PML4[511] -> page_tbl_pdp_high
+    mov   eax, page_tbl_pdp_high
     or    eax, 0b11
-    mov   DWORD [page_id_pdp], eax
-    ; map 2 MiB pages in PD
+    mov   DWORD [page_tbl_pml4 + 511 * 8], eax
+
+    ; page_tbl_pdp_low[0] -> page_tbl_pd_1
+    mov   eax, page_tbl_pd_1
+    or    eax, 0b11
+    mov   DWORD [page_tbl_pdp_low], eax
+    ; page_tbl_pdp_low[1] -> page_tbl_pd_2
+    mov   eax, page_tbl_pd_2
+    or    eax, 0b11
+    mov   DWORD [page_tbl_pdp_low+8], eax
+
+    ; page_tbl_pdp_high[510] -> page_tbl_pd_1
+    mov   eax, page_tbl_pd_1
+    or    eax, 0b11
+    mov   DWORD [page_tbl_pdp_high + 510 * 8], eax
+    ; page_tbl_pdp_high[511] -> page_tbl_pd_2
+    mov   eax, page_tbl_pd_2
+    or    eax, 0b11
+    mov   DWORD [page_tbl_pdp_high + 511 * 8], eax
+
+    ; map 2 MiB pages in 1st PD to first GiB of physical memory
     mov ecx, 512
-    mov edi, page_id_pd
+    mov edi, page_tbl_pd_1
     mov eax, (1 << 7) | 3 ; huge page (7), writable (1), present (0)
-    .next_pd:
+    .next_pd_1:
         stosd                    ; write lower DWORD of PD entry
         add edi, 4               ; skip higher DWORD of PD entry
         add eax, 2 * 1024 * 1024 ; advance physical address by 2 MiB
-        loop .next_pd
+        loop .next_pd_1
+    ; map 2 MiB pages in 2nd PD to second GiB of physical memory
+    mov ecx, 512
+    mov edi, page_tbl_pd_2
+    .next_pd_2:
+        stosd                    ; write lower DWORD of PD entry
+        add edi, 4               ; skip higher DWORD of PD entry
+        add eax, 2 * 1024 * 1024 ; advance physical address by 2 MiB
+        loop .next_pd_2
     ret
 
 
