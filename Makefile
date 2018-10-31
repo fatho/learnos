@@ -23,6 +23,10 @@ build: $(BOOT_ISO)
 run: build
 	qemu-system-x86_64 -cdrom $(BOOT_ISO)
 
+debug: build
+	qemu-system-x86_64 -cdrom $(BOOT_ISO) -gdb tcp::9000
+
+
 clean:
 	rm -rf $(BUILD_DIR)
 	cargo clean
