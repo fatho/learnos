@@ -1,4 +1,4 @@
-%include "src/boot32.inc"
+%include "src/bootcode/boot32.inc"
 
 section .boot32
 align 4
