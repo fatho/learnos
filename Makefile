@@ -26,13 +26,13 @@ endif
 
 # Build inputs
 GRUB_CFG := ./image/grub.cfg
-LDSCRIPT := learnos_multiboot2/linker.ld
+LDSCRIPT := learnos_kernel/linker.ld
 
 # Build artifacts
 
 ROOT_BUILD_DIR := ./build
 BUILD_DIR := $(ROOT_BUILD_DIR)/$(CONFIG)
-MULTIBOOT_NAME := learnos_multiboot2
+MULTIBOOT_NAME := learnos_kernel
 
 BOOT_ISO := $(BUILD_DIR)/boot.iso
 MULTIBOOT_BIN := $(BUILD_DIR)/$(MULTIBOOT_NAME)

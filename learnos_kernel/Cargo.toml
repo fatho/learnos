@@ -1,12 +1,12 @@
 [package]
-name = "learnos_multiboot2"
+name = "learnos_kernel"
 version = "0.1.0"
 authors = ["Fabian Thorand <f.thorand@gmail.com>"]
 edition = "2018"
 build = "build.rs"
 
 [lib]
-name = "learnos_multiboot2"
+name = "learnos_kernel"
 crate-type = ["staticlib"]
 
 [dependencies]
