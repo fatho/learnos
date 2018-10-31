@@ -11,7 +11,7 @@ QEMU := qemu-system-x86_64
 QEMUFLAGS := 
 
 LD := ld
-LDFLAGS := -z max-page-size=0x1000 --whole-archive
+LDFLAGS := -z max-page-size=0x1000
 
 CARGO := cargo
 CARGOFLAGS := --target x86_64-learnos

@@ -13,7 +13,7 @@ extern page_tbl_pdp_high
 extern page_tbl_pd_1
 extern page_tbl_pd_2
 
-extern rust_main
+extern kernel_main
 
 ; this is the multiboot entry point, we are in 32 bit protected mode now
 _start32:
@@ -40,10 +40,16 @@ _start32:
     ; inform that we're done and jump to long mode
     mov esi, msg_ok
     call print32
-    ; Restore multiboot pointer into EDI, passing it as the first argument to rust_main
-    ; This is because `rust_main` expects System V AMD64 ABI calling convention
+    ; Restore multiboot pointer into EDI, passing it as the first argument to kernel_main
+    ; This is because `kernel_main` expects System V AMD64 ABI calling convention
     pop edi
-    jump_to_64 rust_main
+    jump_to_64 kernel_main_trampoline
+
+; jump to the trampoline, otherwise, we could not make the large jump from lowest 2 GiB to highest 2 GiB
+bits 64
+kernel_main_trampoline:
+    jmp kernel_main
+bits 32
 
 
 setup_page_tables:

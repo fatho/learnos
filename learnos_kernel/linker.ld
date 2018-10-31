@@ -6,28 +6,17 @@ SECTIONS
     /* VGA buffer location */
     vga_buffer = 0xB8000;
 
-    /* Kernel code should be loaded at 1M */
+    /* bootloader code should be loaded at 1M */
     . = 1M;
     
-    .text ALIGN(4K) :
+    .bootcode ALIGN(4K) :
     {   
         KEEP(*(.multiboot2))
         *(.boot32)
-        *(.text*)
-    }
-
-    .rodata ALIGN(4K) :
-    {
         *(.boot32.rodata)
-        *(.rodata*)
     }
 
-    .data ALIGN(4K) :
-    {
-        *(.data*)
-    }
-
-    .bss ALIGN(4K) :
+    .bootmem ALIGN(4K) :
     {
         /* reserve page tables */
         page_tbl_pml4 = .; . += 4K;      /*  */
@@ -39,5 +28,26 @@ SECTIONS
         stack_bottom = .;
         . += 8K;
         stack_top = .;
+    }
+
+    /* Kernel starts at this virtual address. Physically, it's put right behind the bootcode */
+
+    kernel_virtual_base = 0xFFFFFFFF80000000;
+    
+    . += kernel_virtual_base;
+
+    .text ALIGN(4K) : AT(ADDR(.text) - kernel_virtual_base)
+    {   
+        *(.text*)
+    }
+
+    .rodata ALIGN(4K) : AT(ADDR(.rodata) - kernel_virtual_base)
+    {
+        *(.rodata*)
+    }
+
+    .data ALIGN(4K) :  AT(ADDR(.data) - kernel_virtual_base)
+    {
+        *(.data*)
     }
 }
