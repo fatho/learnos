@@ -8,14 +8,20 @@ endif
 # Toolset
 
 QEMU := qemu-system-x86_64
+QEMUFLAGS := 
 
 LD := ld
 LDFLAGS := -z max-page-size=0x1000 --whole-archive
 
 CARGO := cargo
 CARGOFLAGS := --target x86_64-learnos
+
+# Special flags depending on debug mode
+
 ifeq ($(DEBUG), 0)
 	CARGOFLAGS += --release
+else
+	QEMUFLAGS += -gdb tcp::9000
 endif
 
 # Build inputs
@@ -35,10 +41,10 @@ MULTIBOOT_LIB := ./target/x86_64-learnos/$(CONFIG)/lib$(MULTIBOOT_NAME).a
 build: $(BOOT_ISO)
 
 run: build
-	qemu-system-x86_64 -cdrom $(BOOT_ISO)
+	qemu-system-x86_64 -cdrom $(BOOT_ISO) $(QEMUFLAGS)
 
-rungdb: build
-	qemu-system-x86_64 -cdrom $(BOOT_ISO) -gdb tcp::9000
+test:
+	cargo test
 
 clean:
 	rm -rf $(ROOT_BUILD_DIR)
@@ -57,4 +63,4 @@ $(MULTIBOOT_BIN): $(MULTIBOOT_LIB) $(LDSCRIPT)
 $(MULTIBOOT_LIB):
 	$(CARGO) xbuild $(CARGOFLAGS)
 
-.PHONY: run rungdb build clean $(MULTIBOOT_LIB)
+.PHONY: run test build clean $(MULTIBOOT_LIB)
