@@ -1,9 +1,19 @@
+//! This module provides a simple wrapper around the VGA buffer.
+//! 
+//! The creation of the wrapper is unsafe, because it would allow
+//! concurrent modification of the same memory location, as there is
+//! only one VGA buffer.
+
 use crate::addr::{PhysAddr, VirtAddr};
+
 
 /// Physical address of the VGA text buffer.
 pub const VGA_PHYS_ADDR: PhysAddr = PhysAddr(0xB8000);
 
+
+/// The 16 VGA colors
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
+#[repr(u8)]
 pub enum Color {
     Black = 0,
     Blue = 1,
@@ -24,7 +34,8 @@ pub enum Color {
 }
 
 impl Color {
-    pub fn from_index(idx: u8) -> Option<Color> {
+    /// Return the color corresponding to the given VGA code.
+    pub fn from_vga(idx: u8) -> Option<Color> {
         match idx {
             0 => Some(Color::Black),
             1 => Some(Color::Blue),
@@ -45,39 +56,56 @@ impl Color {
             _ => None,
         }
     }
+
+    /// Return the VGA code of the given color.
+    pub fn to_vga(self) -> u8 {
+        self as u8
+    }
 }
 
-/// Entry of the VGA buffer.
+/// Entry in the VGA buffer consisting of a foreground and background color, and an 8 bit character.
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
-pub struct VgaEntry(u16);
+pub struct VgaChar(u16);
 
-impl VgaEntry {
-    pub fn new(fg: Color, bg: Color, ch: u8) -> VgaEntry {
-        VgaEntry((ch as u16) | ((fg as u16) << 8) | ((bg as u16) << 12))
+impl VgaChar {
+    /// Create a new VGA character representation from its colors and a character.
+    /// For example, a white R on a blue background:
+    /// 
+    /// ```
+    /// let vc = VgaChar::new(Color::White, Color::Blue, b'R')
+    /// ```
+    pub fn new(fg: Color, bg: Color, ch: u8) -> VgaChar {
+        VgaChar((ch as u16) | ((fg as u16) << 8) | ((bg as u16) << 12))
     }
 
+    /// Extract the foreground color.
     pub fn fg(self) -> Color {
-        Color::from_index(((self.0 >> 8) & 0x0F) as u8).unwrap()
+        Color::from_vga(((self.0 >> 8) & 0x0F) as u8).unwrap()
     }
 
+    /// Extract the background color.
     pub fn bg(self) -> Color {
-        Color::from_index(((self.0 >> 12) & 0x0F) as u8).unwrap()
+        Color::from_vga(((self.0 >> 12) & 0x0F) as u8).unwrap()
     }
 
+    /// Extract the character.
     pub fn ch(self) -> u8 {
         (self.0 & 0xFF) as u8
     }
 }
 
-pub struct Vga {
+/// Wrapper providing access to the VGA memory area.
+/// Internally, it works with the virtual address of the VGA memory,
+/// as there is no means of accessing the physical memory directly in long mode.
+pub struct VgaMem {
     buffer: *mut u16
 }
 
-impl Vga {
+impl VgaMem {
     /// Create a new wrapper for the VGA buffer. This is unsafe because it allows the
     /// creation of multiple instances, even though there is just one single VGA buffer.
     pub unsafe fn with_addr(virt_vga_address: VirtAddr) -> Self {
-        Vga {
+        VgaMem {
             buffer: virt_vga_address.0 as *mut u16
         }
     }
@@ -86,29 +114,40 @@ impl Vga {
     pub const HEIGHT: u32 = 25;
     pub const SIZE: usize = (Self::WIDTH * Self::HEIGHT) as usize;
 
-    pub fn clear(&mut self, fill_entry: VgaEntry) {
+    /// Set every character to the same value.
+    pub fn clear(&mut self, fill_entry: VgaChar) {
         for off in 0..Self::SIZE {
             unsafe { self.buffer.add(off).write_volatile(fill_entry.0) }
         }
     }
 
-    pub fn read(&self, off: usize) -> VgaEntry {
+    /// Extract a colored character from the given offset.
+    pub fn read(&self, off: usize) -> VgaChar {
         assert!(off < Self::SIZE);
-        unsafe { VgaEntry(self.buffer.add(off).read_volatile()) }
+        unsafe { VgaChar(self.buffer.add(off).read_volatile()) }
     }
 
-    pub fn write(&mut self, off: usize, entry: VgaEntry) {
+    /// Set the colored character at the given offset.
+    pub fn write(&mut self, off: usize, entry: VgaChar) {
         assert!(off < Self::SIZE);
         unsafe { self.buffer.add(off).write_volatile(entry.0) }
     }
 
+    /// Extract the character at the given offset.
     pub fn read_char(&self, off: usize) -> u8 {
         assert!(off < Self::SIZE);
         unsafe { (self.buffer.add(off) as *const u8).read_volatile() }
     }
 
+    /// Set the character at the given offset, keeping its old color.
     pub fn write_char(&mut self, off: usize, ch: u8) {
         assert!(off < Self::SIZE);
         unsafe { (self.buffer.add(off) as *mut u8).write_volatile(ch) }
+    }
+
+    /// Compute the offset in the VGA buffer for accessing the character
+    /// with the given x and y coordinates.
+    pub fn offset_at(x: u32, y: u32) -> usize {
+        (y * Self::WIDTH + x) as usize
     }
 }
