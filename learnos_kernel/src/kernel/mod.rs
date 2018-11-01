@@ -51,13 +51,20 @@ pub fn main(multiboot_info: PhysAddr32) -> ! {
                     }
                 }
             },
-            multiboot2::Tag::BootCommandLine(cmdline) => {
-            },
-            multiboot2::Tag::BootLoaderName(loader) => {
-            }
-            multiboot2::Tag::Other(_id, _) => {}
+            _ => {}
         }
     }
+    diagnostics::print_pfa_info(&mut console, &pfa);
+
+
+    let a = pfa.alloc(4).unwrap();
+    let b = pfa.alloc(3).unwrap();
+    pfa.free(a);
+    let c = pfa.alloc(2).unwrap();
+    pfa.free(b);
+
+    diagnostics::print_pfa_info(&mut console, &pfa);
+
 
     halt!();
 }
