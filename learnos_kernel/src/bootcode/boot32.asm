@@ -12,6 +12,7 @@ extern page_tbl_pdp_low
 extern page_tbl_pdp_high
 extern page_tbl_pd_1
 extern page_tbl_pd_2
+extern kernel_virtual_base
 
 extern kernel_main
 
@@ -48,6 +49,7 @@ _start32:
 ; jump to the trampoline, otherwise, we could not make the large jump from lowest 2 GiB to highest 2 GiB
 bits 64
 kernel_main_trampoline:
+    add rsp, kernel_virtual_base
     jmp kernel_main
 bits 32
 

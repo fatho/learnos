@@ -33,6 +33,16 @@ pub fn main(multiboot_info: addr::PhysAddr32) -> ! {
     }
     writeln!(console, "main @ {:p}", (main as *const u8));
     writeln!(console, "RIP  @ {:p}", (where_am_i as *const u8));
+    let stack_addr: u64;
+    unsafe {
+        asm!("mov rax, rsp"
+             : "={rax}"(stack_addr)
+             : 
+             : 
+             : "intel"
+             );
+    }
+    writeln!(console, "RSP  @ {:p}", (stack_addr as *const u8));
 
     let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(multiboot_info.extend())) };
     writeln!(console, "Multiboot2");
