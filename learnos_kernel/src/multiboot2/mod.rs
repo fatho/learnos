@@ -28,6 +28,14 @@ impl Multiboot2Info {
         }
     }
 
+    pub fn start_addr(&self) -> VirtAddr {
+        self.start
+    }
+
+    pub fn end_addr(&self) -> VirtAddr {
+        self.end
+    }
+
     pub fn tags(&self) -> Tags {
         Tags {
             current: self.start.add(8),

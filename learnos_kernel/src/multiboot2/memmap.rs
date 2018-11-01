@@ -54,7 +54,7 @@ impl<'a> Iterator for Entries<'a> {
             unsafe {
                 let entry = Entry {
                     base_addr: PhysAddr((*self.current).base_addr),
-                    length: (*self.current).length as usize,
+                    length: (*self.current).length,
                     entry_type: EntryType::from_raw((*self.current).entry_type),
                 };
                 self.current = self.current.add(1);
@@ -67,15 +67,14 @@ impl<'a> Iterator for Entries<'a> {
 /// An entry in the memory map.
 pub struct Entry {
     pub base_addr: PhysAddr,
-    pub length: usize,
+    pub length: u64,
     pub entry_type: EntryType
 }
 
 impl Entry {
     /// Return whether the memory range described by this entry is available to the OS.
-    /// It might contain ACPI information.
     pub fn is_available(&self) -> bool {
-        self.entry_type == EntryType::Available || self.entry_type == EntryType::AvailableACPI
+        self.entry_type == EntryType::Available
     }
 }
 
