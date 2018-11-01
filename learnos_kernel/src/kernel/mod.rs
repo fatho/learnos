@@ -35,9 +35,38 @@ pub fn main(multiboot_info: addr::PhysAddr32) -> ! {
     writeln!(console, "RIP  @ {:p}", (where_am_i as *const u8));
 
     let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(multiboot_info.extend())) };
-    writeln!(console, "Multiboot2 {:?}", mb2);
+    writeln!(console, "Multiboot2");
     for tag in mb2.tags() {
-        writeln!(console, "{:?}", tag);
+        match tag {
+            multiboot2::Tag::MemoryMap(mmap) => {
+                writeln!(console, "Memory map:");
+                writeln!(console, "{: ^6} {: ^23} {: ^18}", "Type", "Physical Address", "Length");
+                let mut total_available = 0;
+                for e in mmap.entries() {
+                    let type_ch = match e.entry_type {
+                        multiboot2::memmap::EntryType::Available => 'A',
+                        multiboot2::memmap::EntryType::AvailableACPI => 'C',
+                        multiboot2::memmap::EntryType::ReservedHibernation => 'H',
+                        multiboot2::memmap::EntryType::Defective => 'X',
+                        multiboot2::memmap::EntryType::Reserved => 'R',
+                    };
+                    writeln!(console, "{: ^6} {: ^23p} {:016x}", type_ch, e.base_addr, e.length);
+                    if e.is_available() {
+                        total_available += e.length;
+                    }
+                }
+                writeln!(console, " Available: {} MiB", total_available / 1024 / 1024);
+            },
+            multiboot2::Tag::BootCommandLine(cmdline) => {
+                writeln!(console, "Command: {:?}", cmdline);
+            },
+            multiboot2::Tag::BootLoaderName(loader) => {
+                writeln!(console, "Loader: {:?}", loader);
+            }
+            multiboot2::Tag::Other(id, _) => {
+                writeln!(console, "Unknown tag: type={}", id);
+            }
+        }
     }
 
     halt!();

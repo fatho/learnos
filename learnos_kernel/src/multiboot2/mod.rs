@@ -7,6 +7,9 @@ use core::iter::{Iterator};
 use core::str;
 use core::marker;
 
+pub mod memmap;
+mod raw;
+
 /// Handle to the multiboot2 info data. While this is active, care must be taken not to overwrite the data in memory.
 /// The liftetime of the data extracted from a `Multiboot2Info` value is tied to the lifetime of the `Multiboot2Info`
 /// value itself.
@@ -18,7 +21,7 @@ pub struct Multiboot2Info {
 
 impl Multiboot2Info {
     pub unsafe fn from_virt(addr: VirtAddr) -> Multiboot2Info {
-        let header = addr.0 as *const HeaderRaw;
+        let header = addr.0 as *const raw::Header;
         Multiboot2Info {
             start: addr,
             end: addr.add((*header).total_size as u64)
@@ -50,7 +53,7 @@ impl<'a> Iterator for Tags<'a> {
         unsafe {
             let tag_start = self.current;
             // parse tag header
-            let tag_header_ptr = tag_start.0 as *const TagRaw;
+            let tag_header_ptr = tag_start.0 as *const raw::Tag;
             let size = (*tag_header_ptr).size;
             let tag_type = (*tag_header_ptr).tag_type;
 
@@ -72,7 +75,7 @@ impl<'a> Iterator for Tags<'a> {
                         assert!(size >= 9); // tag must contain at least the 0 terminator
                         Tag::BootLoaderName(mem_util::str_from_addr(tag_start.add(8), (size - 9) as usize).unwrap())
                     },
-                    6 => Tag::MemoryMap,
+                    6 => Tag::MemoryMap(memmap::MemoryMap::from_raw(tag_header_ptr)),
                     // 10: APM table, uninteresting
                     _ => Tag::Other(tag_type, tag_start)
                 };
@@ -89,20 +92,7 @@ pub enum Tag<'a> {
     /// Name of the Multiboot2 compliant bootloader that loaded the kernel.
     BootLoaderName(&'a str),
     /// TODO: provide means for iterating through memory map
-    MemoryMap,
+    MemoryMap(memmap::MemoryMap<'a>),
     /// Some other tag with the given type, starting at the given address.
     Other(u32, VirtAddr)
-}
-
-
-#[repr(C, packed)]
-struct HeaderRaw {
-    total_size: u32,
-    reserved: u32
-}
-
-#[repr(C, packed)]
-struct TagRaw {
-    tag_type: u32,
-    size: u32
 }
