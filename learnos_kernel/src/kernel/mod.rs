@@ -10,6 +10,8 @@ use crate::addr;
 use crate::vga;
 use crate::console;
 
+use crate::multiboot2;
+
 /// 
 pub fn main(multiboot_info: addr::PhysAddr32) -> ! {
     // Initialize VGA buffer. Besides panics, this is the only place where this should happen.
@@ -31,6 +33,12 @@ pub fn main(multiboot_info: addr::PhysAddr32) -> ! {
     }
     writeln!(console, "main @ {:p}", (main as *const u8));
     writeln!(console, "RIP  @ {:p}", (where_am_i as *const u8));
+
+    let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(multiboot_info.extend())) };
+    writeln!(console, "Multiboot2 {:?}", mb2);
+    for tag in mb2.tags() {
+        writeln!(console, "{:?}", tag);
+    }
 
     halt!();
 }

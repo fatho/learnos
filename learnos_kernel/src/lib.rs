@@ -22,6 +22,7 @@ pub mod addr;
 pub mod vga;
 pub mod console;
 pub mod multiboot2;
+pub mod mem_util;
 
 mod kernel;
 
