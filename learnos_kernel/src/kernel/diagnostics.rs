@@ -3,6 +3,7 @@
 use super::console;
 use core::fmt::{Write};
 use crate::multiboot2;
+use super::layout;
 
 pub fn print_multiboot(console: &mut console::Console, mb2: &multiboot2::Multiboot2Info) {
     writeln!(console, "Multiboot info structures @ {:p}-{:p}", mb2.start_addr(), mb2.end_addr());
@@ -39,4 +40,8 @@ pub fn print_multiboot(console: &mut console::Console, mb2: &multiboot2::Multibo
             }
         }
     }
+}
+
+pub fn print_heap_info(console: &mut console::Console) {
+    writeln!(console, "Physical heap starts at {:p}", layout::heap_start());
 }

@@ -51,3 +51,6 @@ SECTIONS
         *(.data*)
     }
 }
+
+/* get the lowest usable address for heap usage */
+heap_start_phys_marker = . - kernel_virtual_base;

@@ -20,17 +20,25 @@ impl VirtAddr {
     }
 
     pub fn align_up(self, zero_bits: u32) -> Self {
-        let multiple = 1 << zero_bits;
-        let mask = multiple - 1;
-        let padding = multiple - (self.0 & mask);
-        VirtAddr(self.0 + padding)
+        VirtAddr(align_up(self.0, zero_bits))
     }
 
     pub fn align_down(self, zero_bits: u32) -> Self {
-        let multiple = 1 << zero_bits;
-        let mask = multiple - 1;
-        let padding = self.0 & mask;
-        VirtAddr(self.0 - padding)
+        VirtAddr(align_down(self.0, zero_bits))
+    }
+}
+
+impl PhysAddr {
+    pub fn add(self, offset: u64) -> Self {
+        PhysAddr(self.0 + offset)
+    }
+
+    pub fn align_up(self, zero_bits: u32) -> Self {
+        PhysAddr(align_up(self.0, zero_bits))
+    }
+
+    pub fn align_down(self, zero_bits: u32) -> Self {
+        PhysAddr(align_down(self.0, zero_bits))
     }
 }
 
@@ -57,4 +65,18 @@ impl fmt::Pointer for VirtAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "VIRT_0x{:016x}", self.0)
     }
+}
+
+fn align_up(num: u64, zero_bits: u32) -> u64 {
+    let multiple = 1 << zero_bits;
+    let mask = multiple - 1;
+    let padding = multiple - (num & mask);
+    num + padding
+}
+
+fn align_down(num: u64, zero_bits: u32) -> u64 {
+    let multiple = 1 << zero_bits;
+    let mask = multiple - 1;
+    let padding = num & mask;
+    num - padding
 }

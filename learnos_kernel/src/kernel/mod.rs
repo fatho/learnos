@@ -29,10 +29,27 @@ pub fn main(multiboot_info: PhysAddr32) -> ! {
     let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(multiboot_info.extend())) };
     diagnostics::print_multiboot(&mut console, &mb2);
 
-    // 
+    diagnostics::print_heap_info(&mut console);
+
+    // only consider addresses above the heap start as free
+    let heap_start = layout::heap_start().align_up(12);
+
     for tag in mb2.tags() {
         match tag {
             multiboot2::Tag::MemoryMap(mmap) => {
+                for entry in mmap.entries() {
+                    if entry.is_available() {
+                        unsafe {
+                            if entry.base_addr >= heap_start {
+                                pfa.add_space(entry.base_addr, (entry.length >> 12) as u32);
+                            } else if entry.base_addr.add(entry.length) >= heap_start {
+                                let unused = heap_start.0 - entry.base_addr.0;
+                                let adj_len = (entry.length - unused) >> 12;
+                                pfa.add_space(heap_start, adj_len as u32);
+                            }
+                        }
+                    }
+                }
             },
             multiboot2::Tag::BootCommandLine(cmdline) => {
             },
