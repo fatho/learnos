@@ -1,4 +1,4 @@
-//! This module provides a simple text console interface on top of the VGA buffer.
+//! This module provides a simple write-only text console interface on top of the VGA buffer.
 //! 
 //! It automatically proceeds on the next line when encountering `\n` and starts at
 //! the top again when reaching the lower end of the VGA buffer.
@@ -9,7 +9,7 @@
 use crate::vga::{VgaMem, VgaChar, Color};
 use core::fmt;
 
-pub struct Console {
+pub struct Writer {
     buffer: VgaMem,
     // current output column
     x: u32,
@@ -21,15 +21,15 @@ pub struct Console {
     bg: Color
 }
 
-impl Console {
+impl Writer {
     /// Build a new console writer on top of the VGA buffer.
-    pub fn new(buffer: VgaMem) -> Console {
+    pub fn new(buffer: VgaMem) -> Writer {
         Self::with_colors(buffer, Color::White, Color::Black)
     }
 
     /// Build a new console writer with the given intial colors.
-    pub fn with_colors(buffer: VgaMem, fg: Color, bg: Color) -> Console {
-        let mut con = Console {
+    pub fn with_colors(buffer: VgaMem, fg: Color, bg: Color) -> Writer {
+        let mut con = Writer {
             buffer: buffer,
             x: 0,
             y: 0,
@@ -94,7 +94,7 @@ impl Console {
     }
 }
 
-impl fmt::Write for Console {
+impl fmt::Write for Writer {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         for ch in s.bytes() {
             if ch <= 0x7F {

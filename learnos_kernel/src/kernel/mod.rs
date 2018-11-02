@@ -6,27 +6,23 @@ mod diagnostics;
 #[cfg(not(test))]
 use core::panic::PanicInfo;
 use core::fmt::{Write};
+use core::ops::DerefMut;
 
 use crate::addr::{PhysAddr, PhysAddr32};
 use crate::vga;
-use crate::console;
-
 use crate::multiboot2;
-
 use crate::memory;
 
 /// 
 pub fn main(multiboot_info: PhysAddr32) -> ! {
     // Initialize VGA buffer. Besides panics, this is the only place where this should happen.
-    let vga_addr = layout::low_phys_to_virt(vga::VGA_PHYS_ADDR);
-    let vgabuf = unsafe { vga::VgaMem::with_addr(vga_addr) };
-    let mut console = console::Console::new(vgabuf);
+    vga::init(layout::low_phys_to_virt(vga::VGA_PHYS_ADDR));
 
     // prepare multiboot info parsing
     let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(multiboot_info.extend())) };
-    diagnostics::print_multiboot(&mut console, &mb2);
 
-    diagnostics::print_heap_info(&mut console);
+    diagnostics::print_multiboot(&mb2);
+    diagnostics::print_heap_info();
 
     // only consider addresses above the heap start as free
     let heap_start = layout::heap_start().align_up(12);
@@ -37,12 +33,29 @@ pub fn main(multiboot_info: PhysAddr32) -> ! {
 #[panic_handler]
 #[cfg(not(test))]
 fn panic(panic_info: &PanicInfo) -> ! {
-    // System is FUBAR anyway, just grab a new instance of VGA buffer and hope we get some info out
-    let vga_addr = layout::low_phys_to_virt(vga::VGA_PHYS_ADDR);
-    let vgabuf = unsafe { vga::VgaMem::with_addr(vga_addr) };
-    let mut console = console::Console::with_colors(vgabuf, vga::Color::White, vga::Color::Red);
+    fn write_panic(writer: &mut vga::Writer, panic_info: &PanicInfo) {
+        writeln!(writer, "{}", panic_info);
+    }
 
-    writeln!(console, "{}", panic_info);
+    fn extreme_panic(panic_info: &PanicInfo) {
+        // Extreme panic is for when the VGA system is currently locked or
+        // has never been initialized. System is FUBAR anyway, just grab a
+        // new instance of VGA buffer and hope we get some info out
+        let vga_addr = layout::low_phys_to_virt(vga::VGA_PHYS_ADDR);
+        let vgabuf = unsafe { vga::VgaMem::from_addr(vga_addr) };
+        let mut temp_console = vga::Writer::with_colors(vgabuf, vga::Color::White, vga::Color::Red);
+        write_panic(&mut temp_console, panic_info);
+    }
+
+    // try to grab the global VGA writer first, so that the panic doesn't erase previously logged info.
+    // That info could be very valuable for debugging.
+    match vga::GLOBAL_WRITER.try_lock() {
+        None => extreme_panic(panic_info),
+        Some(mut optwriter) => match optwriter.deref_mut() {
+            None => extreme_panic(panic_info),
+            Some(ref mut writer) => write_panic(writer, panic_info)
+        }
+    };
 
     halt!();
 }

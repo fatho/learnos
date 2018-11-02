@@ -5,11 +5,48 @@
 //! only one VGA buffer.
 
 use crate::addr::{PhysAddr, VirtAddr};
+use crate::spin;
+use core::fmt;
+
+mod writer;
+pub use self::writer::Writer;
+
+/// Provides a single synchronized access to the console.
+pub static GLOBAL_WRITER: spin::Mutex<Option<Writer>> = spin::Mutex::new(None);
+
+/// Intialize the global VGA subsystem.
+pub fn init(vga_base: VirtAddr) {
+    let mut vga = GLOBAL_WRITER.lock();
+    let mem = unsafe { VgaMem::from_addr(vga_base) };
+    let console = Writer::new(mem);
+    *vga = Some(console);
+}
+
+pub fn writer() -> WriterHandle {
+    WriterHandle
+}
+
+/// Handle to the globally synchronized VGA console.
+#[derive(Debug)]
+pub struct WriterHandle;
+
+impl fmt::Write for WriterHandle {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        let mut console_guard = GLOBAL_WRITER.lock();
+        let console = (*console_guard).as_mut().expect("VGA subsystem not initialized!");
+        
+        for ch in s.bytes() {
+            if ch <= 0x7F {
+                console.write_char(ch);
+            }
+        }
+        Ok(())
+    }
+}
 
 
 /// Physical address of the VGA text buffer.
 pub const VGA_PHYS_ADDR: PhysAddr = PhysAddr(0xB8000);
-
 
 /// The 16 VGA colors
 #[derive(Eq, PartialEq, Copy, Clone, Debug)]
@@ -104,7 +141,7 @@ pub struct VgaMem {
 impl VgaMem {
     /// Create a new wrapper for the VGA buffer. This is unsafe because it allows the
     /// creation of multiple instances, even though there is just one single VGA buffer.
-    pub unsafe fn with_addr(virt_vga_address: VirtAddr) -> Self {
+    pub unsafe fn from_addr(virt_vga_address: VirtAddr) -> Self {
         VgaMem {
             buffer: virt_vga_address.0 as *mut u16
         }

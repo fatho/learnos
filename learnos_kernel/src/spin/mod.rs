@@ -10,7 +10,7 @@ pub struct Mutex<T> {
 }
 
 impl<T> Mutex<T> {
-    pub fn new(value: T) -> Mutex<T> {
+    pub const fn new(value: T) -> Mutex<T> {
         Mutex {
             guarded_value: UnsafeCell::new(value),
             locked: AtomicBool::new(false)
@@ -24,7 +24,20 @@ impl<T> Mutex<T> {
             mutex: self
         }
     }
+
+    pub fn try_lock(&self) -> Option<MutexGuard<T>> {
+        if self.locked.compare_and_swap(false, true, Ordering::Acquire) {
+            Some(MutexGuard {
+                mutex: self
+            })
+        } else {
+            None
+        }
+    }
 }
+
+unsafe impl<T> Send for Mutex<T> {}
+unsafe impl<T> Sync for Mutex<T> {}
 
 pub struct MutexGuard<'a, T> {
     mutex: &'a Mutex<T>,
