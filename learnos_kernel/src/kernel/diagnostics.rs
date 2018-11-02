@@ -4,7 +4,6 @@ use super::console;
 use super::layout;
 
 use crate::multiboot2;
-use crate::paging::alloc;
 
 use core::fmt::{Write};
 
@@ -47,11 +46,4 @@ pub fn print_multiboot(console: &mut console::Console, mb2: &multiboot2::Multibo
 
 pub fn print_heap_info(console: &mut console::Console) {
     writeln!(console, "Physical heap starts at {:p}", layout::heap_start());
-}
-
-pub fn print_pfa_info(console: &mut console::Console, pfa: &alloc::PageFrameAllocator) {
-    writeln!(console, "Page Frame Allocator regions");
-    for region in pfa.free_list() {
-        writeln!(console, " {:016p} : {}", region.base_addr, region.num_page_frames);
-    }
 }

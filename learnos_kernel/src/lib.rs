@@ -18,12 +18,14 @@ macro_rules! halt {
     };
 }
 
+// reusable parts
 pub mod addr;
 pub mod vga;
 pub mod console;
 pub mod multiboot2;
 pub mod mem_util;
-pub mod paging;
+pub mod memory;
+pub mod spin;
 
 mod kernel;
 
