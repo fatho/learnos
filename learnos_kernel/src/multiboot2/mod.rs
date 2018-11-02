@@ -5,54 +5,46 @@ use crate::mem_util;
 
 use core::iter::{Iterator};
 use core::str;
-use core::marker;
 
 pub mod memmap;
-mod raw;
 
-/// Handle to the multiboot2 info data. While this is active, care must be taken not to overwrite the data in memory.
-/// The liftetime of the data extracted from a `Multiboot2Info` value is tied to the lifetime of the `Multiboot2Info`
-/// value itself.
+/// Read-only pointer to the multiboot2 info data. Care must be taken not to overwrite
+/// that memory region when the multiboot data is still needed.
 #[derive(Debug)]
 pub struct Multiboot2Info {
-    start: VirtAddr,
-    end: VirtAddr
+    header: *const raw::Header,
 }
 
 impl Multiboot2Info {
     pub unsafe fn from_virt(addr: VirtAddr) -> Multiboot2Info {
-        let header = addr.0 as *const raw::Header;
         Multiboot2Info {
-            start: addr,
-            end: addr.add((*header).total_size as u64)
+            header: addr.as_ptr(),
         }
     }
 
     pub fn start_addr(&self) -> VirtAddr {
-        self.start
+        VirtAddr(self.header as u64)
     }
 
-    pub fn end_addr(&self) -> VirtAddr {
-        self.end
+    pub fn length(&self) -> usize {
+        unsafe { (*self.header).total_size as usize }
     }
 
     pub fn tags(&self) -> Tags {
         Tags {
-            current: self.start.add(8),
-            end: self.end,
-            _lifetime: marker::PhantomData
+            current: self.start_addr().add(core::mem::size_of::<raw::Header>() as u64),
+            end: self.start_addr().add(self.length() as u64),
         }
     }
 }
 
-pub struct Tags<'a> {
+pub struct Tags {
     current: VirtAddr,
     end: VirtAddr,
-    _lifetime: marker::PhantomData<&'a u8>
 }
 
-impl<'a> Iterator for Tags<'a> {
-    type Item = Tag<'a>;
+impl Iterator for Tags {
+    type Item = Tag;
 
     fn next(&mut self) -> Option<Self::Item> {
         // tags must be terminated by a tag of type 0,
@@ -94,13 +86,29 @@ impl<'a> Iterator for Tags<'a> {
 }
 
 #[derive(Debug)]
-pub enum Tag<'a> {
+pub enum Tag {
     /// Comand line that was passed to the kernel by the bootloader.
-    BootCommandLine(&'a str),
+    BootCommandLine(&'static str),
     /// Name of the Multiboot2 compliant bootloader that loaded the kernel.
-    BootLoaderName(&'a str),
+    BootLoaderName(&'static str),
     /// TODO: provide means for iterating through memory map
-    MemoryMap(memmap::MemoryMap<'a>),
+    MemoryMap(memmap::MemoryMap),
     /// Some other tag with the given type, starting at the given address.
     Other(u32, VirtAddr)
+}
+
+mod raw {
+
+    #[repr(C, packed)]
+    pub struct Header {
+        pub total_size: u32,
+        pub reserved: u32
+    }
+
+    #[repr(C, packed)]
+    pub struct Tag {
+        pub tag_type: u32,
+        pub size: u32
+    }
+
 }

@@ -12,11 +12,6 @@ pub struct VirtAddr(pub u64);
 #[repr(C)]
 pub struct PhysAddr(pub u64);
 
-/// A 32 bit physical address. Whether it is accessible depends on the current page mapping.
-#[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Debug)]
-#[repr(C)]
-pub struct PhysAddr32(pub u32);
-
 impl VirtAddr {
     pub fn add(self, offset: u64) -> Self {
         VirtAddr(self.0 + offset)
@@ -28,6 +23,10 @@ impl VirtAddr {
 
     pub fn align_down(self, zero_bits: u32) -> Self {
         VirtAddr(align_down(self.0, zero_bits))
+    }
+
+    pub unsafe fn as_ptr<T>(self) -> *const T {
+        self.0 as *const T
     }
 }
 
@@ -45,22 +44,9 @@ impl PhysAddr {
     }
 }
 
-impl PhysAddr32 {
-    /// Re-interpret a 32 bit address as 64 bit.
-    pub fn extend(self) -> PhysAddr {
-        PhysAddr(self.0 as u64)
-    }
-}
-
 impl fmt::Pointer for PhysAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "PHYS_0x{:016x}", self.0)
-    }
-}
-
-impl fmt::Pointer for PhysAddr32 {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PHYS_0x{:08x}", self.0)
     }
 }
 

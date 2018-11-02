@@ -1,5 +1,3 @@
-
-
 #[repr(C, packed)]
 pub struct Header {
     pub total_size: u32,

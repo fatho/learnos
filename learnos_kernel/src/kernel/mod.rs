@@ -8,7 +8,7 @@ use core::panic::PanicInfo;
 use core::fmt::{Write};
 use core::ops::DerefMut;
 
-use crate::addr::{PhysAddr, PhysAddr32};
+use crate::addr::{PhysAddr};
 use crate::vga;
 use crate::multiboot2;
 use crate::memory;

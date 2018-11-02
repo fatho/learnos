@@ -3,15 +3,13 @@ use crate::addr::{PhysAddr, VirtAddr};
 
 use super::{PageFrameAllocator, PageFrame};
 
-/// A simple page frame allocator that uses the free pages themselves as a free list.
-/// 
-/// The whole range managed by the allocator must be mapped to a consecutive virtual
-/// address range.
+/// A simple page frame allocator that bumps the frame number for each allocation.
 pub struct BumpAllocator {
+    next_frame: u64
 }
 
 impl BumpAllocator {
-    pub unsafe fn new(phys_base: PhysAddr, _phys_limit: PhysAddr, virt_base: VirtAddr) -> Self {
+    pub unsafe fn new() -> Self {
         unimplemented!()
     }
 }
