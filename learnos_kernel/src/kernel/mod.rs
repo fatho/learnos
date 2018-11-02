@@ -14,18 +14,21 @@ use crate::multiboot2;
 use crate::memory;
 
 /// 
-pub fn main(multiboot_info: PhysAddr32) -> ! {
+pub fn main(args: &super::KernelArgs) -> ! {
     // Initialize VGA buffer. Besides panics, this is the only place where this should happen.
     vga::init(layout::low_phys_to_virt(vga::VGA_PHYS_ADDR));
 
+    writeln!(vga::writer(), "{:?}", args);
+
     // prepare multiboot info parsing
-    let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(multiboot_info.extend())) };
+    let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(args.multiboot_info)) };
 
     diagnostics::print_multiboot(&mb2);
-    diagnostics::print_heap_info();
 
-    // only consider addresses above the heap start as free
-    let heap_start = layout::heap_start().align_up(12);
+    // only consider addresses above the kernel as free
+    // below the kernel lies the bootcode (which we could recover at this point)
+    // and the stack and page tables (which we cannot recover yet)
+    let heap_start = args.kernel_end.align_up(12);
     
     halt!();
 }

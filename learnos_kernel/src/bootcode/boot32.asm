@@ -6,7 +6,9 @@ bits 32
 global _start32
 
 extern vga_buffer
-extern stack_top
+extern stack_end
+extern kernel_start
+extern kernel_end
 extern page_tbl_pml4
 extern page_tbl_pdp_low
 extern page_tbl_pdp_high
@@ -19,7 +21,7 @@ extern kernel_main
 ; this is the multiboot entry point, we are in 32 bit protected mode now
 _start32:
     ; setup temporary stack
-    mov esp, stack_top
+    mov esp, stack_end
     mov ebp, esp
     ; save multiboot info table, we need it later
     push ebx
@@ -43,13 +45,21 @@ _start32:
     call print32
     ; Restore multiboot pointer into EDI, passing it as the first argument to kernel_main
     ; This is because `kernel_main` expects System V AMD64 ABI calling convention
-    pop edi
+    pop ebx
     jump_to_64 kernel_main_trampoline
 
 ; jump to the trampoline, otherwise, we could not make the large jump from lowest 2 GiB to highest 2 GiB
 bits 64
 kernel_main_trampoline:
+    ; move stack pointer to higher half, still pointing to the same physical memory
     add rsp, kernel_virtual_base
+    ; write KernelArgs structure
+    sub rsp, 24
+    mov qword [rsp], kernel_start
+    mov qword [rsp+8], kernel_end
+    mov qword [rsp+16], rbx
+    ; pass pointer to that structure to the kernel
+    mov rdi, rsp
     jmp kernel_main
 bits 32
 

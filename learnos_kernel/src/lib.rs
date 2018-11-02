@@ -29,8 +29,17 @@ pub mod spin;
 
 mod kernel;
 
+/// Arguments passed to the kernel by the loader.
+#[repr(C, packed)]
+#[derive(Debug, Copy, Clone)]
+pub struct KernelArgs {
+    kernel_start: addr::PhysAddr,
+    kernel_end: addr::PhysAddr,
+    multiboot_info: addr::PhysAddr,
+}
+
 /// This is the Rust entry point that is called by the assembly boot code after switching to long mode.
 #[no_mangle]
-pub extern "C" fn kernel_main(multiboot_info: addr::PhysAddr32) -> ! {
-    kernel::main(multiboot_info)
+pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
+    kernel::main(args)
 }

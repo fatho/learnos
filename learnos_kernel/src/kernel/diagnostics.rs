@@ -1,7 +1,6 @@
 //! Module responsible for displaying diagnostic messages on startup.
 
 use super::vga;
-use super::layout;
 
 use crate::multiboot2;
 
@@ -42,8 +41,4 @@ pub fn print_multiboot(mb2: &multiboot2::Multiboot2Info) {
             }
         }
     }
-}
-
-pub fn print_heap_info() {
-    writeln!(vga::writer(), "Physical heap starts at {:p}", layout::heap_start());
 }

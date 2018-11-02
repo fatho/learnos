@@ -3,15 +3,18 @@
 use core::fmt;
 
 /// A virtual address. It's validity depends on the current page mapping.
+#[repr(C)]
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Debug)]
 pub struct VirtAddr(pub u64);
 
 /// A physical address. Whether it is accessible depends on the current page mapping.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Debug)]
+#[repr(C)]
 pub struct PhysAddr(pub u64);
 
 /// A 32 bit physical address. Whether it is accessible depends on the current page mapping.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Debug)]
+#[repr(C)]
 pub struct PhysAddr32(pub u32);
 
 impl VirtAddr {

@@ -25,9 +25,9 @@ SECTIONS
         page_tbl_pd_1 = .; . += 4K;      /* mapping first physical GiB */
         page_tbl_pd_2 = .; . += 4K;      /* mapping second physical GiB */
         /* reserve 8K of stack space */
-        stack_bottom = .;
+        stack_start = .;
         . += 8K;
-        stack_top = .;
+        stack_end = .;
     }
 
     /* Kernel starts at this virtual address. Physically, it's put right behind the bootcode */
@@ -35,6 +35,8 @@ SECTIONS
     kernel_virtual_base = 0xFFFFFFFF80000000;
     
     . += kernel_virtual_base;
+
+    kernel_start = . - kernel_virtual_base;
 
     .text ALIGN(4K) : AT(ADDR(.text) - kernel_virtual_base)
     {   
@@ -50,7 +52,11 @@ SECTIONS
     {
         *(.data*)
     }
-}
 
-/* get the lowest usable address for heap usage */
-heap_start_phys_marker = . - kernel_virtual_base;
+    .bss ALIGN(4K) :  AT(ADDR(.bss) - kernel_virtual_base)
+    {
+        *(.bss*)
+    }
+
+    kernel_end = . - kernel_virtual_base;
+}
