@@ -27,11 +27,11 @@ impl<T> Mutex<T> {
 
     pub fn try_lock(&self) -> Option<MutexGuard<T>> {
         if self.locked.compare_and_swap(false, true, Ordering::Acquire) {
+            None
+        } else {
             Some(MutexGuard {
                 mutex: self
             })
-        } else {
-            None
         }
     }
 }
