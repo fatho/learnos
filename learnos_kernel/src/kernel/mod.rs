@@ -11,7 +11,8 @@ use core::ops::DerefMut;
 use crate::addr::{PhysAddr};
 use crate::vga;
 use crate::multiboot2;
-use crate::memory;
+use crate::memory::bump::BumpAllocator;
+use crate::memory::{PageFrameNumber, PageFrameAllocator};
 
 /// 
 pub fn main(args: &super::KernelArgs) -> ! {
@@ -20,15 +21,26 @@ pub fn main(args: &super::KernelArgs) -> ! {
 
     writeln!(vga::writer(), "{:?}", args);
 
-    // prepare multiboot info parsing
-    let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(args.multiboot_info)) };
-
+    // parse multiboot info
+    let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(args.multiboot_start)) };
     diagnostics::print_multiboot(&mb2);
+
+    let memory_map = mb2.tags().find_map(|tag| match tag {
+        multiboot2::Tag::MemoryMap(mmap) => Some(mmap),
+        _ => None
+    }).expect("Bootloader did not provide memory map.");
 
     // only consider addresses above the kernel as free
     // below the kernel lies the bootcode (which we could recover at this point)
     // and the stack and page tables (which we cannot recover yet)
-    let heap_start = args.kernel_end.align_up(12);
+    let heap_start = core::cmp::max(args.kernel_end, args.multiboot_end);
+    writeln!(vga::writer(), "{:?}", heap_start);
+
+    let mut pfa = unsafe { BumpAllocator::new(PageFrameNumber::next_above(heap_start), memory_map.regions()) };
+
+    let total = pfa.total_available_frames();
+    let remaining = pfa.remaining_frames();
+    writeln!(vga::writer(), "Remaining: {} Total: {}", remaining, total);
     
     halt!();
 }

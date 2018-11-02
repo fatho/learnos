@@ -23,9 +23,9 @@ impl MemoryMap {
         }
     }
 
-    pub fn regions(&self) -> Entries {
+    pub fn regions(&self) -> Regions {
         unsafe {
-            Entries {
+            Regions {
                 current: self.tag.add(1) as *const Region,
                 end: (self.tag as *const u8).add((*self.tag).header.size as usize) as *const Region,
             }
@@ -34,12 +34,13 @@ impl MemoryMap {
 }
 
 /// An iterator over the entries of a multiboot2 memory map.
-pub struct Entries {
+#[derive(Debug, Clone)]
+pub struct Regions {
     current: *const Region,
     end: *const Region,
 }
 
-impl Iterator for Entries {
+impl Iterator for Regions {
     type Item = &'static Region;
 
     fn next(&mut self) -> Option<Self::Item> {

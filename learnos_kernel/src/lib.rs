@@ -35,7 +35,8 @@ mod kernel;
 pub struct KernelArgs {
     kernel_start: addr::PhysAddr,
     kernel_end: addr::PhysAddr,
-    multiboot_info: addr::PhysAddr,
+    multiboot_start: addr::PhysAddr,
+    multiboot_end: addr::PhysAddr,
 }
 
 /// This is the Rust entry point that is called by the assembly boot code after switching to long mode.

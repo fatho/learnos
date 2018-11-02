@@ -53,13 +53,31 @@ bits 64
 kernel_main_trampoline:
     ; move stack pointer to higher half, still pointing to the same physical memory
     add rsp, kernel_virtual_base
+    mov rbp, rsp
     ; write KernelArgs structure
-    sub rsp, 24
+    sub rsp, 32
     mov qword [rsp], kernel_start
     mov qword [rsp+8], kernel_end
     mov qword [rsp+16], rbx
+    mov eax, dword [rbx] ; read length field of multiboot header
+    add rax, rbx
+    mov qword [rsp+24], rax
     ; pass pointer to that structure to the kernel
     mov rdi, rsp
+    ; reset all other registers
+    xor rax, rax
+    xor rbx, rbx
+    xor rcx, rcx
+    xor rdx, rdx
+    xor rsi, rsi
+    xor r8, r8
+    xor r9, r9
+    xor r10, r10
+    xor r11, r11
+    xor r12, r12
+    xor r13, r13
+    xor r14, r14
+    xor r15, r15
     jmp kernel_main
 bits 32
 
