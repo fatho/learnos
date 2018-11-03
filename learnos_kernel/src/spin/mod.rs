@@ -18,10 +18,10 @@ impl<T> Mutex<T> {
     }
 
     pub fn lock(&self) -> MutexGuard<T> {
-        while self.locked.compare_and_swap(false, true, Ordering::Acquire) { }
-
-        MutexGuard {
-            mutex: self
+        loop {
+            if let Some(success) = self.try_lock() {
+                return success;
+            }
         }
     }
 
@@ -60,5 +60,30 @@ impl<'a, T> DerefMut for MutexGuard<'a, T> {
 impl<'a, T> Drop for MutexGuard<'a, T> {
     fn drop(&mut self) {
         self.mutex.locked.store(false, Ordering::Release);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::Mutex;
+
+    #[test]
+    fn test_mutex() {
+        let mutex = Mutex::new(0_u32);
+
+        // can always lock in the beginning
+        {
+            let guard = mutex.try_lock();
+            assert!(guard.is_some(), "Unlocked mutex must be lockable");
+        }
+
+        // Mutex guard should release it due to the ending scope above
+        {
+            let guard = mutex.try_lock();
+            assert!(guard.is_some(), "Mutex should have been unlocked by guard");
+
+            let guard2 = mutex.try_lock();
+            assert!(guard2.is_none(), "Mutex acquired twice");
+        }
     }
 }
