@@ -1,114 +1,177 @@
 //! Parser for the Multiboot2 information structures provided by the bootloader.
 
-use crate::addr::{VirtAddr};
-use crate::mem_util;
+use crate::addr;
+use crate::addr::{PhysAddr};
 
 use core::iter::{Iterator};
 use core::str;
+use core::slice;
 
 pub mod memmap;
 
-/// Read-only pointer to the multiboot2 info data. Care must be taken not to overwrite
-/// that memory region when the multiboot data is still needed.
-#[derive(Debug)]
+/// Root of Multiboot2 info data.
+#[repr(C, packed)]
 pub struct Multiboot2Info {
-    header: *const raw::Header,
+    total_size: u32,
+    reserved: u32,
+    first_tag: Tag,
 }
 
 impl Multiboot2Info {
-    pub unsafe fn from_virt(addr: VirtAddr) -> Multiboot2Info {
-        Multiboot2Info {
-            header: addr.as_ptr(),
-        }
-    }
-
-    pub fn start_addr(&self) -> VirtAddr {
-        VirtAddr(self.header as u64)
-    }
 
     pub fn length(&self) -> usize {
-        unsafe { (*self.header).total_size as usize }
+        self.total_size as usize
     }
 
-    pub fn tags(&self) -> Tags {
-        Tags {
-            current: self.start_addr().add(core::mem::size_of::<raw::Header>() as u64),
-            end: self.start_addr().add(self.length() as u64),
+    pub fn tags(&self) -> TagsIter {
+        TagsIter {
+            current: &self.first_tag as *const Tag,
         }
     }
+
+    pub fn modules(&self) -> impl Iterator<Item=&'static ModuleTag> {
+        self.tags()
+            .filter(|t| t.tag_type() == TagType::MODULE)
+            .map(|t| (t as *const Tag) )
+            .map(|t| unsafe { &*(t as *const ModuleTag) } )
+    }
+
+    pub fn memory_map(&self) -> Option<&'static memmap::MemoryMapTag> {
+        self.tags()
+            .find(|t| t.tag_type() == TagType::MEMORY_MAP)
+            .map(|t| (t as *const Tag) )
+            .map(|t| unsafe { &*(t as *const memmap::MemoryMapTag) } )
+    }
+
+    pub fn boot_cmd_line(&self) -> Option<&'static str> {
+        self.tags()
+            .find(|t| t.tag_type() == TagType::BOOT_CMD_LINE)
+            .map(|t| (t as *const Tag) )
+            .map(|t| unsafe { &*(t as *const BootCommandLineTag) } )
+            .map(|t| t.cmd_line() )
+    }
+
+    pub fn bootloader_name(&self) -> Option<&'static str> {
+        self.tags()
+            .find(|t| t.tag_type() == TagType::BOOT_LOADER_NAME)
+            .map(|t| (t as *const Tag) )
+            .map(|t| unsafe { &*(t as *const BootLoaderTag) } )
+            .map(|t| t.name() )
+    }
 }
 
-pub struct Tags {
-    current: VirtAddr,
-    end: VirtAddr,
+#[repr(C, packed)]
+pub struct Tag {
+    tag_type: TagType,
+    size: u32
 }
 
-impl Iterator for Tags {
-    type Item = Tag;
+impl Tag {
+    pub fn tag_type(&self) -> TagType {
+        self.tag_type
+    }
+
+    pub fn size(&self) -> u32 {
+        self.size
+    }
+
+    unsafe fn next(&self) -> *const Tag {
+        let offset = addr::align_up(self.size() as u64, 3) as usize;
+        ((self as *const Tag) as *const u8).add(offset) as *const Tag
+    }
+}
+
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+#[repr(C)]
+pub struct TagType(u32);
+
+impl TagType {
+    const END: TagType = TagType(0);
+    const BOOT_CMD_LINE: TagType = TagType(1);
+    const BOOT_LOADER_NAME: TagType = TagType(2);
+    const MODULE: TagType = TagType(3);
+    const MEMORY_MAP: TagType = TagType(6);
+}
+
+pub struct TagsIter {
+    current: *const Tag,
+}
+
+impl Iterator for TagsIter {
+    type Item = &'static Tag;
 
     fn next(&mut self) -> Option<Self::Item> {
-        // tags must be terminated by a tag of type 0,
-        // so we should never exceed the end address
-        assert!(self.current < self.end);
         unsafe {
-            let tag_start = self.current;
-            // parse tag header
-            let tag_header_ptr = tag_start.0 as *const raw::Tag;
-            let size = (*tag_header_ptr).size;
-            let tag_type = (*tag_header_ptr).tag_type;
-
-            // sanity check that size covers at least the two header fields
-            assert!(size >= 8);
-
-            // goto next tag starting on 8 byte alignment
-            self.current = tag_start.add(size as u64).align_up(3);
-
-            if tag_type == 0 {
+            let this = &*self.current;
+            if this.tag_type() == TagType::END {
                 None
             } else {
-                let tag = match tag_type {
-                    1 => {
-                        assert!(size >= 9); // tag must contain at least the 0 terminator
-                        Tag::BootCommandLine(mem_util::str_from_addr(tag_start.add(8), (size - 9) as usize).unwrap())
-                    },
-                    2 => {
-                        assert!(size >= 9); // tag must contain at least the 0 terminator
-                        Tag::BootLoaderName(mem_util::str_from_addr(tag_start.add(8), (size - 9) as usize).unwrap())
-                    },
-                    6 => Tag::MemoryMap(memmap::MemoryMap::from_raw(tag_header_ptr)),
-                    // 10: APM table, uninteresting
-                    _ => Tag::Other(tag_type, tag_start)
-                };
-                Some(tag)
+                self.current = this.next();
+                Some(this)
             }
         }
     }
 }
 
-#[derive(Debug)]
-pub enum Tag {
-    /// Comand line that was passed to the kernel by the bootloader.
-    BootCommandLine(&'static str),
-    /// Name of the Multiboot2 compliant bootloader that loaded the kernel.
-    BootLoaderName(&'static str),
-    /// TODO: provide means for iterating through memory map
-    MemoryMap(memmap::MemoryMap),
-    /// Some other tag with the given type, starting at the given address.
-    Other(u32, VirtAddr)
+#[repr(C, packed)]
+pub struct ModuleTag {
+    common: Tag,
+    mod_start: u32,
+    mod_end: u32,
+    cmd_line_start: u8,
 }
 
-mod raw {
-
-    #[repr(C, packed)]
-    pub struct Header {
-        pub total_size: u32,
-        pub reserved: u32
+impl ModuleTag {
+    pub fn mod_start(&self) -> PhysAddr {
+        PhysAddr(self.mod_start as u64)
     }
 
-    #[repr(C, packed)]
-    pub struct Tag {
-        pub tag_type: u32,
-        pub size: u32
+    pub fn mod_end(&self) -> PhysAddr {
+        PhysAddr(self.mod_end as u64)
     }
 
+    pub fn cmd_line(&self) -> &str {
+        let cmd_line_ptr = &self.cmd_line_start as *const u8;
+        assert!(self.common.size as usize >= core::mem::size_of::<ModuleTag>());
+        let cmd_line_length = self.common.size as usize - core::mem::size_of::<ModuleTag>();
+        unsafe {
+            str::from_utf8(slice::from_raw_parts(cmd_line_ptr, cmd_line_length)).unwrap()
+        }
+    }
+}
+
+
+#[repr(C, packed)]
+pub struct BootLoaderTag {
+    common: Tag,
+    name_start: u8,
+}
+
+impl BootLoaderTag {
+    pub fn name(&self) -> &str {
+        let name_ptr = &self.name_start as *const u8;
+        assert!(self.common.size as usize >= core::mem::size_of::<BootLoaderTag>());
+        let name_length = self.common.size as usize - core::mem::size_of::<BootLoaderTag>();
+        unsafe {
+            str::from_utf8(slice::from_raw_parts(name_ptr, name_length)).unwrap()
+        }
+    }
+}
+
+
+#[repr(C, packed)]
+pub struct BootCommandLineTag {
+    common: Tag,
+    cmd_line_start: u8,
+}
+
+impl BootCommandLineTag {
+    pub fn cmd_line(&self) -> &str {
+        let cmd_line_ptr = &self.cmd_line_start as *const u8;
+        assert!(self.common.size as usize >= core::mem::size_of::<BootCommandLineTag>());
+        let cmd_line_length = self.common.size as usize - core::mem::size_of::<BootCommandLineTag>();
+        unsafe {
+            str::from_utf8(slice::from_raw_parts(cmd_line_ptr, cmd_line_length)).unwrap()
+        }
+    }
 }

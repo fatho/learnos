@@ -23,7 +23,6 @@ macro_rules! halt {
 pub mod addr;
 pub mod vga;
 pub mod multiboot2;
-pub mod mem_util;
 pub mod memory;
 pub mod spin;
 

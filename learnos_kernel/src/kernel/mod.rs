@@ -22,28 +22,28 @@ pub fn main(args: &super::KernelArgs) -> ! {
     writeln!(vga::writer(), "{:?}", args);
 
     // parse multiboot info
-    let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(args.multiboot_start)) };
+    let mb2: &multiboot2::Multiboot2Info = unsafe { &*layout::low_phys_to_virt(args.multiboot_start).as_ptr() };
     diagnostics::print_multiboot(&mb2);
 
-    // find memory map
-    let memory_map = mb2.tags().find_map(|tag| match tag {
-        multiboot2::Tag::MemoryMap(mmap) => Some(mmap),
-        _ => None
-    }).expect("Bootloader did not provide memory map.");
-
-    // use it for building the page frame allocator
-    let mut pfa = unsafe { BumpAllocator::new(memory_map.regions()) };
-    // reserve everything up to the highest used address
-    pfa.reserve_until(PageFrameNumber::next_above(args.kernel_end));
-    pfa.reserve_until(PageFrameNumber::next_above(args.multiboot_end));
-    // mb2.tags().filter_map(|tag| match tag {
-    //     multiboot2::Tag::Module(module) => Some(module),
+    // // find memory map
+    // let memory_map = mb2.tags().find_map(|tag| match tag {
+    //     multiboot2::Tag::MemoryMap(mmap) => Some(mmap),
     //     _ => None
-    // }).for_each(|module| pfa.reserve_until(PageFrameNumber::next_above(module.end));
+    // }).expect("Bootloader did not provide memory map.");
 
-    let total = pfa.total_available_frames();
-    let remaining = pfa.remaining_frames();
-    writeln!(vga::writer(), "Remaining: {} Total: {}", remaining, total);
+    // // use it for building the page frame allocator
+    // let mut pfa = unsafe { BumpAllocator::new(memory_map.regions()) };
+    // // reserve everything up to the highest used address
+    // pfa.reserve_until(PageFrameNumber::next_above(args.kernel_end));
+    // pfa.reserve_until(PageFrameNumber::next_above(args.multiboot_end));
+    // // mb2.tags().filter_map(|tag| match tag {
+    // //     multiboot2::Tag::Module(module) => Some(module),
+    // //     _ => None
+    // // }).for_each(|module| pfa.reserve_until(PageFrameNumber::next_above(module.end));
+
+    // let total = pfa.total_available_frames();
+    // let remaining = pfa.remaining_frames();
+    // writeln!(vga::writer(), "Remaining: {} Total: {}", remaining, total);
     
     halt!();
 }

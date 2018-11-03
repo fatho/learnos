@@ -56,14 +56,14 @@ impl fmt::Pointer for VirtAddr {
     }
 }
 
-fn align_up(num: u64, zero_bits: u32) -> u64 {
+pub fn align_up(num: u64, zero_bits: u32) -> u64 {
     let multiple = 1 << zero_bits;
     let mask = multiple - 1;
     let padding = multiple - (num & mask);
     num + padding
 }
 
-fn align_down(num: u64, zero_bits: u32) -> u64 {
+pub fn align_down(num: u64, zero_bits: u32) -> u64 {
     let multiple = 1 << zero_bits;
     let mask = multiple - 1;
     let padding = num & mask;

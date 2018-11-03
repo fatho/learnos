@@ -5,29 +5,22 @@ use crate::addr::{PhysAddr};
 use core::iter::{Iterator};
 use core::fmt;
 
-use super::raw;
-
-#[derive(Debug)]
-pub struct MemoryMap {
-    tag: *const MemoryMapTagRaw,
+#[repr(C)]
+pub struct MemoryMapTag {
+    header: super::Tag,
+    entry_size: u32,
+    entry_version: u32,
+    first_region: Region,
 }
 
-impl MemoryMap {
-    pub unsafe fn from_raw(tag_raw: *const raw::Tag) -> MemoryMap {
-        assert!((*tag_raw).tag_type == 6);
-        
-        let mem_tag = tag_raw as *const MemoryMapTagRaw;
-
-        MemoryMap {
-            tag: mem_tag,
-        }
-    }
-
+impl MemoryMapTag {
     pub fn regions(&self) -> Regions {
         unsafe {
+            let length = (self.header.size - 16) / self.entry_size;
+            let start = &self.first_region as *const Region;
             Regions {
-                current: self.tag.add(1) as *const Region,
-                end: (self.tag as *const u8).add((*self.tag).header.size as usize) as *const Region,
+                current: start,
+                end: start.add(length as usize),
             }
         }
     }
@@ -108,11 +101,4 @@ impl Region {
     pub fn entry_type(&self) -> EntryType {
         self.entry_type
     }
-}
-
-#[repr(C)]
-struct MemoryMapTagRaw {
-    header: raw::Tag,
-    entry_size: u32,
-    entry_version: u32,
 }
