@@ -80,12 +80,16 @@ impl Writer {
     /// Advance the cursor to the next line.
     pub fn next_line(&mut self) {
         // advance cursor
-        self.y += 1;
-        self.x = 0;
-        if self.y == VgaMem::HEIGHT {
-            self.y = 0;
+        if self.y == VgaMem::HEIGHT - 1 {
+            // move all lines up by one line
+            for idx in 0..(VgaMem::SIZE - VgaMem::WIDTH as usize) {
+                self.buffer.write(idx, self.buffer.read(idx + VgaMem::WIDTH as usize));
+            }
+        } else {
+            self.y += 1;
         }
-        // clear line, so that newly written text does not mix with previous text that was still there.
+        self.x = 0;
+        // clear last line, so that newly written text does not mix with previous text that was still there.
         for x in 0..VgaMem::WIDTH {
             let entry = VgaChar::new(self.fg, self.bg, 0);
             let offset = self.y * VgaMem::WIDTH + x;

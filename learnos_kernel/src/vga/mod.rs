@@ -159,24 +159,28 @@ impl VgaMem {
     }
 
     /// Extract a colored character from the given offset.
+    #[inline]
     pub fn read(&self, off: usize) -> VgaChar {
         assert!(off < Self::SIZE);
         unsafe { VgaChar(self.buffer.add(off).read_volatile()) }
     }
 
     /// Set the colored character at the given offset.
+    #[inline]
     pub fn write(&mut self, off: usize, entry: VgaChar) {
         assert!(off < Self::SIZE);
         unsafe { self.buffer.add(off).write_volatile(entry.0) }
     }
 
     /// Extract the character at the given offset.
+    #[inline]
     pub fn read_char(&self, off: usize) -> u8 {
         assert!(off < Self::SIZE);
         unsafe { (self.buffer.add(off) as *const u8).read_volatile() }
     }
 
     /// Set the character at the given offset, keeping its old color.
+    #[inline]
     pub fn write_char(&mut self, off: usize, ch: u8) {
         assert!(off < Self::SIZE);
         unsafe { (self.buffer.add(off) as *mut u8).write_volatile(ch) }
@@ -184,6 +188,7 @@ impl VgaMem {
 
     /// Compute the offset in the VGA buffer for accessing the character
     /// with the given x and y coordinates.
+    #[inline]
     pub fn offset_at(x: u32, y: u32) -> usize {
         (y * Self::WIDTH + x) as usize
     }
