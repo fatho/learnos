@@ -6,13 +6,10 @@ mod diagnostics;
 #[cfg(not(test))]
 use core::panic::PanicInfo;
 use core::fmt::{Write};
-use core::ops::DerefMut;
 
-use crate::addr::{PhysAddr};
 use crate::vga;
 use crate::multiboot2;
 use crate::memory::bump::BumpAllocator;
-use crate::memory::{PageFrameNumber, PageFrameAllocator};
 
 /// 
 pub fn main(args: &super::KernelArgs) -> ! {
@@ -39,7 +36,7 @@ pub fn main(args: &super::KernelArgs) -> ! {
 
     let total = pfa.total_available_frames();
     let remaining = pfa.remaining_frames();
-    writeln!(vga::writer(), "Remaining: {} Total: {}", remaining, total);
+    writeln!(vga::writer(), "Total: {} frames  Remaining: {} frames ({}%)", total, remaining, remaining * 100 / total);
     
     halt!();
 }
@@ -65,7 +62,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
     // That info could be very valuable for debugging.
     match vga::GLOBAL_WRITER.try_lock() {
         None => extreme_panic(panic_info),
-        Some(mut optwriter) => match optwriter.deref_mut() {
+        Some(mut optwriter) => match *optwriter {
             None => extreme_panic(panic_info),
             Some(ref mut writer) => write_panic(writer, panic_info)
         }
