@@ -20,12 +20,12 @@ impl VirtAddr {
         VirtAddr(self.0 + offset)
     }
 
-    pub fn align_up(self, zero_bits: u32) -> Self {
-        VirtAddr(align_up(self.0, zero_bits))
+    pub fn align_up(self, alignment: usize) -> Self {
+        VirtAddr(align_up(self.0, alignment))
     }
 
-    pub fn align_down(self, zero_bits: u32) -> Self {
-        VirtAddr(align_down(self.0, zero_bits))
+    pub fn align_down(self, alignment: usize) -> Self {
+        VirtAddr(align_down(self.0, alignment))
     }
 
     pub unsafe fn as_ptr<T>(self) -> *const T {
@@ -38,12 +38,12 @@ impl PhysAddr {
         PhysAddr(self.0 + offset)
     }
 
-    pub fn align_up(self, zero_bits: u32) -> Self {
-        PhysAddr(align_up(self.0, zero_bits))
+    pub fn align_up(self, alignment: usize) -> Self {
+        PhysAddr(align_up(self.0, alignment))
     }
 
-    pub fn align_down(self, zero_bits: u32) -> Self {
-        PhysAddr(align_down(self.0, zero_bits))
+    pub fn align_down(self, alignment: usize) -> Self {
+        PhysAddr(align_down(self.0, alignment))
     }
 }
 
@@ -59,16 +59,56 @@ impl fmt::Pointer for VirtAddr {
     }
 }
 
-pub fn align_up(num: usize, zero_bits: u32) -> usize {
-    let multiple = 1 << zero_bits;
-    let mask = multiple - 1;
-    let padding = multiple - (num & mask);
-    num + padding
+/// Return the smallest `x` that is a multiple of `alignment` such that `x >= num`.
+#[inline]
+pub fn align_up(num: usize, alignment: usize) -> usize {
+    if alignment == 0 {
+        num
+    } else {
+        let mask = alignment - 1;
+        assert!(alignment & mask == 0, "alignment must be power of two");
+        let padding = alignment - (num & mask);
+        num + (padding & mask)
+    }
 }
 
-pub fn align_down(num: usize, zero_bits: u32) -> usize {
-    let multiple = 1 << zero_bits;
-    let mask = multiple - 1;
-    let padding = num & mask;
-    num - padding
+/// Return the largest `x` that is a multiple of `alignment` such that `x <= num`.
+pub fn align_down(num: usize, alignment: usize) -> usize {
+    if alignment == 0 {
+        num
+    } else {
+        let mask = alignment - 1;
+        assert!(alignment & mask == 0, "alignment must be power of two");
+        let padding = num & mask;
+        num - padding
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::{align_down, align_up};
+
+    #[test]
+    fn align_down_test() {
+        assert_eq!(align_down(23, 8), 16);
+        assert_eq!(align_down(24, 8), 24);
+        assert_eq!(align_down(25, 8), 24);
+
+        // edge cases
+        assert_eq!(align_down(23, 0), 23);
+        assert_eq!(align_down(0, 0), 0);
+        assert_eq!(align_down(0xFFFF_FFFF_FFFF_FFFF, 0), 0xFFFF_FFFF_FFFF_FFFF);
+    }
+
+    #[test]
+    fn align_up_test() {
+        assert_eq!(align_up(23, 8), 24);
+        assert_eq!(align_up(24, 8), 24);
+        assert_eq!(align_up(25, 8), 32);
+
+        // edge cases
+        assert_eq!(align_up(23, 0), 23);
+        assert_eq!(align_up(0, 0), 0);
+        assert_eq!(align_up(0xFFFF_FFFF_FFFF_FFFF, 0), 0xFFFF_FFFF_FFFF_FFFF);
+    }
 }

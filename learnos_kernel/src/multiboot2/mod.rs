@@ -76,7 +76,7 @@ impl Tag {
     }
 
     unsafe fn next(&self) -> *const Tag {
-        let offset = addr::align_up(self.size(), 3);
+        let offset = addr::align_up(self.size(), 8);
         ((self as *const Tag) as *const u8).add(offset) as *const Tag
     }
 }
