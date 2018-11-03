@@ -71,12 +71,12 @@ impl Tag {
         self.tag_type
     }
 
-    pub fn size(&self) -> u32 {
-        self.size
+    pub fn size(&self) -> usize {
+        self.size as usize
     }
 
     unsafe fn next(&self) -> *const Tag {
-        let offset = addr::align_up(self.size() as u64, 3) as usize;
+        let offset = addr::align_up(self.size(), 8);
         ((self as *const Tag) as *const u8).add(offset) as *const Tag
     }
 }
@@ -123,11 +123,11 @@ pub struct ModuleTag {
 
 impl ModuleTag {
     pub fn mod_start(&self) -> PhysAddr {
-        PhysAddr(self.mod_start as u64)
+        PhysAddr(self.mod_start as usize)
     }
 
     pub fn mod_end(&self) -> PhysAddr {
-        PhysAddr(self.mod_end as u64)
+        PhysAddr(self.mod_end as usize)
     }
 
     pub fn cmd_line(&self) -> &str {

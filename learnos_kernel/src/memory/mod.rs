@@ -1,26 +1,28 @@
+//! This module contains the memory
+
 pub mod bump;
 
 use crate::addr::{PhysAddr};
 
-pub const PAGE_SIZE: u64 = 0x4000;
-
 /// Number of trailing zeros in a page aligned address.
 pub const PAGE_ALIGN_BITS: u32 = 12;
+
+pub const PAGE_SIZE: usize = 1 << PAGE_ALIGN_BITS;
 
 /// Number of a physical page frame, counted from the start.
 /// The first page frame at physicall address 0x0 has number zero.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Copy, Clone)]
-pub struct PageFrameNumber(u64);
+pub struct PageFrameNumber(usize);
 
 impl PageFrameNumber {
     /// Return the next page frame starting at or above the given physical address.
     pub fn next_above(addr: PhysAddr) -> PageFrameNumber {
-        PageFrameNumber(addr.align_up(PAGE_ALIGN_BITS).0 >> PAGE_ALIGN_BITS)
+        PageFrameNumber(addr.align_up(PAGE_SIZE).0 >> PAGE_ALIGN_BITS)
     }
 
     /// Return the page frame including the given physical address.
     pub fn including(addr: PhysAddr) -> PageFrameNumber {
-        PageFrameNumber(addr.align_down(PAGE_ALIGN_BITS).0 >> PAGE_ALIGN_BITS)
+        PageFrameNumber(addr.align_down(PAGE_SIZE).0 >> PAGE_ALIGN_BITS)
     }
 
     pub fn start_address(&self) -> PhysAddr {
@@ -55,19 +57,19 @@ impl PageFrameRegion {
     /// Construct the largest page frame region that is included in the given physical memory region.
     pub fn new_included_in(start: PhysAddr, end: PhysAddr) -> PageFrameRegion {
         PageFrameRegion {
-            start: PageFrameNumber(start.align_up(PAGE_ALIGN_BITS).0 >> PAGE_ALIGN_BITS),
-            end: PageFrameNumber(end.align_down(PAGE_ALIGN_BITS).0 >> PAGE_ALIGN_BITS)
+            start: PageFrameNumber(start.align_up(PAGE_SIZE).0 >> PAGE_ALIGN_BITS),
+            end: PageFrameNumber(end.align_down(PAGE_SIZE).0 >> PAGE_ALIGN_BITS)
         }
     }
     /// Construct the smallest page frame region that is fully including the given physical memory region.
     pub fn new_including(start: PhysAddr, end: PhysAddr) -> PageFrameRegion {
         PageFrameRegion {
-            start: PageFrameNumber(start.align_down(PAGE_ALIGN_BITS).0 >> PAGE_ALIGN_BITS),
-            end: PageFrameNumber(end.align_up(PAGE_ALIGN_BITS).0 >> PAGE_ALIGN_BITS)
+            start: PageFrameNumber(start.align_down(PAGE_SIZE).0 >> PAGE_ALIGN_BITS),
+            end: PageFrameNumber(end.align_up(PAGE_SIZE).0 >> PAGE_ALIGN_BITS)
         }
     }
 
-    pub fn length(&self) -> u64 {
+    pub fn length(&self) -> usize {
         if self.start > self.end {
             0
         } else {
