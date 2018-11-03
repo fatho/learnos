@@ -33,7 +33,7 @@ impl BumpAllocator {
     }
 
     /// The number of frames that can still be allocated.
-    pub fn remaining_frames(&self) -> u64 {
+    pub fn remaining_frames(&self) -> usize {
         let next = self.next_frame;
         self.regions.clone()
             .filter(|r| r.is_available())
@@ -45,7 +45,7 @@ impl BumpAllocator {
 
     /// The total number of available frames in memory.
     /// This is maximum number of page frames that could have been allocated.
-    pub fn total_available_frames(&self) -> u64 {
+    pub fn total_available_frames(&self) -> usize {
         self.regions.clone()
             .filter(|r| r.is_available())
             .map(page_frames_in_region)

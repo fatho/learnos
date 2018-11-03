@@ -8,6 +8,8 @@
 
 #[macro_use]
 extern crate core;
+#[macro_use]
+extern crate static_assertions;
 
 macro_rules! halt {
     () => {

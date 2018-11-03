@@ -1,8 +1,10 @@
+//! This module contains the memory
+
 pub mod bump;
 
 use crate::addr::{PhysAddr};
 
-pub const PAGE_SIZE: u64 = 0x4000;
+pub const PAGE_SIZE: usize = 0x4000;
 
 /// Number of trailing zeros in a page aligned address.
 pub const PAGE_ALIGN_BITS: u32 = 12;
@@ -10,7 +12,7 @@ pub const PAGE_ALIGN_BITS: u32 = 12;
 /// Number of a physical page frame, counted from the start.
 /// The first page frame at physicall address 0x0 has number zero.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Copy, Clone)]
-pub struct PageFrameNumber(u64);
+pub struct PageFrameNumber(usize);
 
 impl PageFrameNumber {
     /// Return the next page frame starting at or above the given physical address.
@@ -67,7 +69,7 @@ impl PageFrameRegion {
         }
     }
 
-    pub fn length(&self) -> u64 {
+    pub fn length(&self) -> usize {
         if self.start > self.end {
             0
         } else {

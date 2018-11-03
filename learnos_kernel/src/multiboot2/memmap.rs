@@ -94,8 +94,8 @@ impl Region {
         self.base_addr
     }
 
-    pub fn length(&self) -> u64 {
-        self.length
+    pub fn length(&self) -> usize {
+        self.length as usize
     }
 
     pub fn entry_type(&self) -> EntryType {

@@ -2,18 +2,21 @@
 
 use core::fmt;
 
+// For now, this kernel is 64 bit only. Ensure that `usize` has the right size.
+assert_eq_size!(ptr_size; usize, u64);
+
 /// A virtual address. It's validity depends on the current page mapping.
 #[repr(C)]
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Debug)]
-pub struct VirtAddr(pub u64);
+pub struct VirtAddr(pub usize);
 
 /// A physical address. Whether it is accessible depends on the current page mapping.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Debug)]
 #[repr(C)]
-pub struct PhysAddr(pub u64);
+pub struct PhysAddr(pub usize);
 
 impl VirtAddr {
-    pub fn add(self, offset: u64) -> Self {
+    pub fn add(self, offset: usize) -> Self {
         VirtAddr(self.0 + offset)
     }
 
@@ -31,7 +34,7 @@ impl VirtAddr {
 }
 
 impl PhysAddr {
-    pub fn add(self, offset: u64) -> Self {
+    pub fn add(self, offset: usize) -> Self {
         PhysAddr(self.0 + offset)
     }
 
@@ -56,14 +59,14 @@ impl fmt::Pointer for VirtAddr {
     }
 }
 
-pub fn align_up(num: u64, zero_bits: u32) -> u64 {
+pub fn align_up(num: usize, zero_bits: u32) -> usize {
     let multiple = 1 << zero_bits;
     let mask = multiple - 1;
     let padding = multiple - (num & mask);
     num + padding
 }
 
-pub fn align_down(num: u64, zero_bits: u32) -> u64 {
+pub fn align_down(num: usize, zero_bits: u32) -> usize {
     let multiple = 1 << zero_bits;
     let mask = multiple - 1;
     let padding = num & mask;
