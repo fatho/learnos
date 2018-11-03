@@ -63,6 +63,6 @@ $(MULTIBOOT_BIN): $(MULTIBOOT_LIB) $(LDSCRIPT)
 	ld $(LDFLAGS) -T $(LDSCRIPT) -o $(MULTIBOOT_BIN) $(MULTIBOOT_LIB)
 
 $(MULTIBOOT_LIB):
-	RUSTFLAGS="-C code-model=kernel" $(CARGO) xbuild $(CARGOFLAGS)
+	RUST_TARGET_PATH="$(CURDIR)" RUSTFLAGS="-C code-model=kernel" $(CARGO) xbuild $(CARGOFLAGS)
 
 .PHONY: run test build clean $(MULTIBOOT_LIB)
