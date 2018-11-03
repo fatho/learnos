@@ -82,7 +82,7 @@ impl fmt::Debug for EntryType {
     }
 }
 
-#[repr(C)]
+#[repr(C, packed)]
 pub struct Region {
     base_addr: PhysAddr,
     length: u64,

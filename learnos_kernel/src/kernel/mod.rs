@@ -25,18 +25,21 @@ pub fn main(args: &super::KernelArgs) -> ! {
     let mb2 = unsafe { multiboot2::Multiboot2Info::from_virt(layout::low_phys_to_virt(args.multiboot_start)) };
     diagnostics::print_multiboot(&mb2);
 
+    // find memory map
     let memory_map = mb2.tags().find_map(|tag| match tag {
         multiboot2::Tag::MemoryMap(mmap) => Some(mmap),
         _ => None
     }).expect("Bootloader did not provide memory map.");
 
-    // only consider addresses above the kernel as free
-    // below the kernel lies the bootcode (which we could recover at this point)
-    // and the stack and page tables (which we cannot recover yet)
-    let heap_start = core::cmp::max(args.kernel_end, args.multiboot_end);
-    writeln!(vga::writer(), "{:?}", heap_start);
-
-    let mut pfa = unsafe { BumpAllocator::new(PageFrameNumber::next_above(heap_start), memory_map.regions()) };
+    // use it for building the page frame allocator
+    let mut pfa = unsafe { BumpAllocator::new(memory_map.regions()) };
+    // reserve everything up to the highest used address
+    pfa.reserve_until(PageFrameNumber::next_above(args.kernel_end));
+    pfa.reserve_until(PageFrameNumber::next_above(args.multiboot_end));
+    // mb2.tags().filter_map(|tag| match tag {
+    //     multiboot2::Tag::Module(module) => Some(module),
+    //     _ => None
+    // }).for_each(|module| pfa.reserve_until(PageFrameNumber::next_above(module.end));
 
     let total = pfa.total_available_frames();
     let remaining = pfa.remaining_frames();

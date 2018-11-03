@@ -12,16 +12,16 @@ pub struct BumpAllocator {
 }
 
 impl BumpAllocator {
-    pub unsafe fn new(initial_frame_number: PageFrameNumber, regions: Regions) -> Self {
+    pub unsafe fn new(regions: Regions) -> Self {
         BumpAllocator {
-            next_frame: initial_frame_number,
+            next_frame: PageFrameNumber(0),
             regions: regions
         }
     }
 
     /// Reserve all page frames up to the given page frame number.
     /// Doesn't have any effect if the reserved page frames have already been allocated.
-    pub fn reserve(&mut self, reserved_frame_number: PageFrameNumber) {
+    pub fn reserve_until(&mut self, reserved_frame_number: PageFrameNumber) {
         self.next_frame = core::cmp::max(reserved_frame_number, self.next_frame);
     }
 
