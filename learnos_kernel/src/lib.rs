@@ -5,6 +5,7 @@
 #![feature(asm)]
 #![feature(get_type_id)]
 #![feature(const_fn)]
+#![feature(format_args_nl)] // needed for debug! macro
 
 #[macro_use]
 extern crate core;
@@ -28,6 +29,7 @@ pub mod diagnostics;
 pub mod vga;
 pub mod multiboot2;
 pub mod memory;
+pub mod serial;
 pub mod spin;
 
 // kernel specific part

@@ -37,6 +37,8 @@ pub fn main(args: &super::KernelArgs) -> ! {
     // initialize memory subsystem
     memory::init(heap_start, memory_map.regions());
     debug!("Page frame allocation initialized.");
+
+    panic!("Test");
     
     halt!();
 }
@@ -67,6 +69,10 @@ fn panic(panic_info: &PanicInfo) -> ! {
             Some(ref mut writer) => write_panic(writer, panic_info)
         }
     };
+
+    // Also dump the panic to the serial port.
+    let mut com1 = unsafe { crate::serial::SerialPort::new(crate::serial::COM1_ADDR) };
+    writeln!(com1, "{}", panic_info);
 
     halt!();
 }

@@ -8,7 +8,7 @@ endif
 # Toolset
 
 QEMU := qemu-system-x86_64
-QEMUFLAGS := 
+QEMUFLAGS := -serial stdio
 
 LD := ld
 LDFLAGS := -z max-page-size=0x1000 --whole-archive
@@ -38,6 +38,7 @@ MULTIBOOT_NAME := learnos_kernel
 BOOT_ISO := $(BUILD_DIR)/boot.iso
 MULTIBOOT_BIN := $(BUILD_DIR)/$(MULTIBOOT_NAME)
 MULTIBOOT_LIB := ./target/x86_64-learnos/$(CONFIG)/lib$(MULTIBOOT_NAME).a
+
 
 build: $(BOOT_ISO)
 
