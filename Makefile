@@ -26,6 +26,7 @@ endif
 
 # Build inputs
 GRUB_CFG := ./image/grub.cfg
+TEST_MODULE := ./image/test-module.txt
 LDSCRIPT := learnos_kernel/linker.ld
 
 # Build artifacts
@@ -50,10 +51,11 @@ clean:
 	rm -rf $(ROOT_BUILD_DIR)
 	cargo clean
 
-$(BOOT_ISO): $(MULTIBOOT_BIN) $(GRUB_CFG)
+$(BOOT_ISO): $(MULTIBOOT_BIN) $(GRUB_CFG) $(TEST_MODULE)
 	mkdir -p $(BUILD_DIR)/iso/boot/grub
 	cp $(GRUB_CFG) $(BUILD_DIR)/iso/boot/grub/grub.cfg
 	cp $(MULTIBOOT_BIN) $(BUILD_DIR)/iso/boot/$(MULTIBOOT_NAME)
+	cp $(TEST_MODULE) $(BUILD_DIR)/iso/boot/test-module.txt
 	grub-mkrescue -o $(BOOT_ISO) $(BUILD_DIR)/iso
 
 $(MULTIBOOT_BIN): $(MULTIBOOT_LIB) $(LDSCRIPT)
