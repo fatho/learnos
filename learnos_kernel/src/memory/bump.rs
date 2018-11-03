@@ -1,4 +1,5 @@
 use crate::multiboot2::memmap::{Regions, Region};
+use crate::addr::PhysAddr;
 
 use super::{PageFrameAllocator, PageFrame, PageFrameNumber, PageFrameRegion};
 
@@ -23,6 +24,12 @@ impl BumpAllocator {
     /// Doesn't have any effect if the reserved page frames have already been allocated.
     pub fn reserve_until(&mut self, reserved_frame_number: PageFrameNumber) {
         self.next_frame = core::cmp::max(reserved_frame_number, self.next_frame);
+    }
+
+    /// Reserve all page frames up to the given physical address page frame number.
+    /// Doesn't have any effect if the reserved page frames have already been allocated.
+    pub fn reserve_until_address(&mut self, reserved_address: PhysAddr) {
+        self.reserve_until(PageFrameNumber::next_above(reserved_address));
     }
 
     /// The number of frames that can still be allocated.
