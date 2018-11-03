@@ -22,7 +22,7 @@ pub fn init(vga_base: VirtAddr) {
     *vga = Some(console);
 }
 
-pub fn writer() -> WriterHandle {
+pub const fn writer() -> WriterHandle {
     WriterHandle
 }
 

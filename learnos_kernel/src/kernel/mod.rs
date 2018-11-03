@@ -18,7 +18,7 @@ pub fn main(args: &super::KernelArgs) -> ! {
     // Initialize VGA buffer. Besides panics, this is the only place where this should happen.
     vga::init(layout::low_phys_to_virt(vga::VGA_PHYS_ADDR));
 
-    writeln!(vga::writer(), "{:?}", args);
+    debug!("{:?}", args);
 
     // parse multiboot info
     let mb2: &multiboot2::Multiboot2Info = unsafe { &*layout::low_phys_to_virt(args.multiboot_start).as_ptr() };
@@ -36,7 +36,7 @@ pub fn main(args: &super::KernelArgs) -> ! {
 
     // initialize memory subsystem
     memory::init(heap_start, memory_map.regions());
-    writeln!(vga::writer(), "Page frame allocation initialized.");
+    debug!("Page frame allocation initialized.");
     
     halt!();
 }

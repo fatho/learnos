@@ -23,11 +23,14 @@ macro_rules! halt {
 
 // reusable parts
 pub mod addr;
+#[macro_use]
+pub mod diagnostics;
 pub mod vga;
 pub mod multiboot2;
 pub mod memory;
 pub mod spin;
 
+// kernel specific part
 mod kernel;
 
 /// Arguments passed to the kernel by the loader.
