@@ -6,10 +6,12 @@ mod diagnostics;
 #[cfg(not(test))]
 use core::panic::PanicInfo;
 use core::fmt::{Write};
+use core::iter;
 
+use crate::addr::PhysAddr;
 use crate::vga;
 use crate::multiboot2;
-use crate::memory::bump::BumpAllocator;
+use crate::memory;
 
 /// 
 pub fn main(args: &super::KernelArgs) -> ! {
@@ -25,18 +27,16 @@ pub fn main(args: &super::KernelArgs) -> ! {
     // find memory map
     let memory_map = mb2.memory_map().expect("Bootloader did not provide memory map.");
 
-    // use it for building the page frame allocator
-    let mut pfa = unsafe { BumpAllocator::new(memory_map.regions()) };
-    // reserve everything up to the highest used address
-    pfa.reserve_until_address(args.kernel_end);
-    pfa.reserve_until_address(args.multiboot_end);
-    for module in mb2.modules() {
-        pfa.reserve_until_address(module.mod_start());
-    }
+    // compute start physical heap
+    let heap_start = mb2.modules()
+        .map(|m| m.mod_end())
+        .chain(iter::once(args.kernel_end))
+        .chain(iter::once(args.multiboot_end))
+        .max().unwrap_or(PhysAddr(0));
 
-    let total = pfa.total_available_frames();
-    let remaining = pfa.remaining_frames();
-    writeln!(vga::writer(), "Total: {} frames  Remaining: {} frames ({}%)", total, remaining, remaining * 100 / total);
+    // initialize memory subsystem
+    memory::init(heap_start, memory_map.regions());
+    writeln!(vga::writer(), "Page frame allocation initialized.");
     
     halt!();
 }

@@ -13,7 +13,7 @@ pub struct BumpAllocator {
 }
 
 impl BumpAllocator {
-    pub unsafe fn new(regions: Regions) -> Self {
+    pub fn new(regions: Regions) -> Self {
         BumpAllocator {
             next_frame: PageFrameNumber(0),
             regions: regions

@@ -130,12 +130,19 @@ impl ModuleTag {
         PhysAddr(self.mod_end as usize)
     }
 
+    /// Return a reference to the command line of the module stored in the tag.
+    /// 
+    /// # Panics
+    /// 
+    /// This function panics when the string stored in the tag is not valid UTF-8,
+    /// as it is mandated by the Multiboot2 specification.
     pub fn cmd_line(&self) -> &str {
         let cmd_line_ptr = &self.cmd_line_start as *const u8;
         assert!(self.common.size as usize >= core::mem::size_of::<ModuleTag>());
         let cmd_line_length = self.common.size as usize - core::mem::size_of::<ModuleTag>();
         unsafe {
-            str::from_utf8(slice::from_raw_parts(cmd_line_ptr, cmd_line_length)).unwrap()
+            str::from_utf8(slice::from_raw_parts(cmd_line_ptr, cmd_line_length))
+                .expect("Invalid UTF-8 string in Multiboot tag")
         }
     }
 }
@@ -148,12 +155,19 @@ pub struct BootLoaderTag {
 }
 
 impl BootLoaderTag {
+    /// Return a reference to the bootloader name stored in the tag.
+    /// 
+    /// # Panics
+    /// 
+    /// This function panics when the string stored in the tag is not valid UTF-8,
+    /// as it is mandated by the Multiboot2 specification.
     pub fn name(&self) -> &str {
         let name_ptr = &self.name_start as *const u8;
         assert!(self.common.size as usize >= core::mem::size_of::<BootLoaderTag>());
         let name_length = self.common.size as usize - core::mem::size_of::<BootLoaderTag>();
         unsafe {
-            str::from_utf8(slice::from_raw_parts(name_ptr, name_length)).unwrap()
+            str::from_utf8(slice::from_raw_parts(name_ptr, name_length))
+                .expect("Invalid UTF-8 string in Multiboot tag")
         }
     }
 }
@@ -166,12 +180,19 @@ pub struct BootCommandLineTag {
 }
 
 impl BootCommandLineTag {
+    /// Return a reference to the command line stored in the tag.
+    /// 
+    /// # Panics
+    /// 
+    /// This function panics when the string stored in the tag is not valid UTF-8,
+    /// as it is mandated by the Multiboot2 specification.
     pub fn cmd_line(&self) -> &str {
         let cmd_line_ptr = &self.cmd_line_start as *const u8;
         assert!(self.common.size as usize >= core::mem::size_of::<BootCommandLineTag>());
         let cmd_line_length = self.common.size as usize - core::mem::size_of::<BootCommandLineTag>();
         unsafe {
-            str::from_utf8(slice::from_raw_parts(cmd_line_ptr, cmd_line_length)).unwrap()
+            str::from_utf8(slice::from_raw_parts(cmd_line_ptr, cmd_line_length))
+                .expect("Invalid UTF-8 string in Multiboot tag")
         }
     }
 }

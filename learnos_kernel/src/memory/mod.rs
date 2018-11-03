@@ -1,13 +1,46 @@
-//! This module contains the memory
+//! This module contains the memory management of the kernel.
 
 pub mod bump;
 
 use crate::addr::{PhysAddr};
+use crate::spin::Mutex;
+use crate::multiboot2::memmap::Regions;
 
 /// Number of trailing zeros in a page aligned address.
 pub const PAGE_ALIGN_BITS: u32 = 12;
 
 pub const PAGE_SIZE: usize = 1 << PAGE_ALIGN_BITS;
+
+
+
+/// Generic interface for a page frame allocator.
+pub trait PageFrameAllocator {
+    fn alloc(&mut self) -> Option<PageFrame>;
+    fn free(&mut self, frame: PageFrame);
+}
+
+/// The global page frame allocator that can be used from anywhere in the kernel.
+static GLOBAL_PAGE_FRAME_ALLOCATOR: Mutex<Option<bump::BumpAllocator>> = Mutex::new(None);
+
+pub fn init(base: PhysAddr, regions: Regions) {
+    let mut global_allocator = GLOBAL_PAGE_FRAME_ALLOCATOR.lock();
+    if global_allocator.is_some() {
+        panic!("Memory subsystem has already been initialized")
+    }
+    let mut new_allocator = bump::BumpAllocator::new(regions);
+    new_allocator.reserve_until_address(base);
+    *global_allocator = Some(new_allocator);
+}
+
+/// Allocate a physical page frame.
+pub fn alloc_frame() -> Option<PageFrame> {
+    GLOBAL_PAGE_FRAME_ALLOCATOR.lock().as_mut().expect("Memory subsystem not initialized").alloc()
+}
+
+/// Free a physical page frame.
+pub fn free_frame(frame: PageFrame) {
+    GLOBAL_PAGE_FRAME_ALLOCATOR.lock().as_mut().expect("Memory subsystem not initialized").free(frame)
+}
 
 /// Number of a physical page frame, counted from the start.
 /// The first page frame at physicall address 0x0 has number zero.
@@ -37,12 +70,6 @@ impl PageFrameNumber {
 /// Handle to an allocated page frame.
 #[derive(Debug)]
 pub struct PageFrame(PageFrameNumber);
-
-/// Generic interface for a page frame allocator.
-pub trait PageFrameAllocator {
-    fn alloc(&mut self) -> Option<PageFrame>;
-    fn free(&mut self, frame: PageFrame);
-}
 
 /// A region of physical page frames.
 #[derive(Eq, PartialEq, Debug, Clone)]
@@ -81,7 +108,6 @@ impl PageFrameRegion {
         self.start >= self.end
     }
 }
-
 
 #[cfg(test)]
 mod test {

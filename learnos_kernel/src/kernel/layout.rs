@@ -1,9 +1,23 @@
 //! Hardcoded memory layout of the kernel.
+//! 
+//! The kernel expects that the lowest 2 GiB of physical memory are mapped to `0xFFFFFFFF_80000000`.
+//! 
+//! # Virtual memory layout
+//! 
+//! - `0xFFFF_FF00_0000_0000` 510th PML4 entry, used for recursive mapping
+//! - `0xFFFF_FF80_0000_0000` 511th PML4 entry, reserved for kernel usage
+//!   - `0xFFFF_FFFF_8000_0000` mapped to lowest 2 GiB, contains the kernel binary
 
 use crate::addr::{PhysAddr, VirtAddr};
 
 /// The virtual address where the kernel reserved area begins (highest 2 GiB)
 pub const KERNEL_VIRTUAL_BASE: VirtAddr = VirtAddr(0xFFFFFFFF80000000);
+
+/// The virtual address where the PML4 table maps onto itself.
+pub const PML4_RECURSIVE_MAPPING_ADDR: VirtAddr = VirtAddr(PML4_RECURSIVE_MAPPING_INDEX as usize * 0x80_0000_0000);
+
+/// Index into the PML4 where it recursively maps onto itself.
+pub const PML4_RECURSIVE_MAPPING_INDEX: u32 = 510;
 
 /// The highest physical address that's mapped in the kernel area.
 pub const LOW_PHYS_MAX: PhysAddr = PhysAddr(0x0000000080000000);

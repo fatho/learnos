@@ -92,6 +92,10 @@ setup_page_tables:
     mov   eax, page_tbl_pdp_low
     or    eax, 0b11
     mov   DWORD [page_tbl_pml4], eax
+    ; PML4[510] -> page_tbl_pml4
+    mov   eax, page_tbl_pml4
+    or    eax, 0b11
+    mov   DWORD [page_tbl_pml4 + 511 * 8], eax
     ; PML4[511] -> page_tbl_pdp_high
     mov   eax, page_tbl_pdp_high
     or    eax, 0b11

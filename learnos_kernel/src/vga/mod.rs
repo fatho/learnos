@@ -33,7 +33,7 @@ pub struct WriterHandle;
 impl fmt::Write for WriterHandle {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         let mut console_guard = GLOBAL_WRITER.lock();
-        let console = (*console_guard).as_mut().expect("VGA subsystem not initialized!");
+        let console = (*console_guard).as_mut().ok_or(fmt::Error)?;
         
         for ch in s.bytes() {
             if ch <= 0x7F {
