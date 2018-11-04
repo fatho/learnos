@@ -11,6 +11,8 @@
 extern crate core;
 #[macro_use]
 extern crate static_assertions;
+#[macro_use]
+extern crate bitflags;
 
 macro_rules! halt {
     () => {

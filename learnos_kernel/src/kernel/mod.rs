@@ -5,11 +5,13 @@ mod diagnostics;
 
 #[cfg(not(test))]
 use core::panic::PanicInfo;
+#[cfg(not(test))]
 use core::fmt::{Write};
 use core::iter;
 use core::str;
+use core::slice;
 
-use crate::addr::PhysAddr;
+use crate::addr::{PhysAddr, VirtAddr};
 use crate::vga;
 use crate::multiboot2;
 use crate::memory;
@@ -34,14 +36,14 @@ pub fn main(args: &super::KernelArgs) -> ! {
     // find memory map
     let memory_map = mb2.memory_map().expect("Bootloader did not provide memory map.");
 
-    // compute start physical heap
+    // compute start of physical heap
     let heap_start = mb2.modules().map(|m| m.mod_end())
         .chain(iter::once(args.kernel_end))
         .chain(iter::once(args.multiboot_end))
         .max().unwrap_or(PhysAddr(0));
 
-    // initialize memory subsystem
-    memory::init(heap_start, memory_map.regions());
+    // initialize pysical memory subsystem
+    memory::pfa::init(heap_start, memory_map.regions());
     debugln!("Page frame allocation initialized.");
 
     // find ACPI table
@@ -71,6 +73,21 @@ pub fn main(args: &super::KernelArgs) -> ! {
     } else {
         debugln!("ACPI not found");
     }
+
+    // virtual memory test
+    debugln!("Starting virtual memory test");
+    // map VGA buffer again at 
+    let vga_new = VirtAddr(0x0000_0010_0000_0000);
+    unsafe { 
+        debugln!("Map VGA buffer to different address");
+        memory::vmm::mmap(vga_new, vga::VGA_PHYS_ADDR);
+        let old_buffer: &[u16] = slice::from_raw_parts(layout::low_phys_to_virt(vga::VGA_PHYS_ADDR).as_ptr(), 25 * 80);
+        let new_buffer: &[u16] = slice::from_raw_parts(vga_new.as_ptr(), 25 * 80);
+        debugln!("Ensuring old and new buffer have the same contents");
+        assert_eq!(old_buffer, new_buffer);
+        debugln!("Seems like both virtual addresses point to the same physical memory");
+    }
+
 
     unsafe {
         {

@@ -13,12 +13,6 @@ use crate::addr::{PhysAddr, VirtAddr};
 /// The virtual address where the kernel reserved area begins (highest 2 GiB)
 pub const KERNEL_VIRTUAL_BASE: VirtAddr = VirtAddr(0xFFFFFFFF80000000);
 
-/// The virtual address where the PML4 table maps onto itself.
-pub const PML4_RECURSIVE_MAPPING_ADDR: VirtAddr = VirtAddr(PML4_RECURSIVE_MAPPING_INDEX as usize * 0x80_0000_0000);
-
-/// Index into the PML4 where it recursively maps onto itself.
-pub const PML4_RECURSIVE_MAPPING_INDEX: u32 = 510;
-
 /// The highest physical address that's mapped in the kernel area.
 pub const LOW_PHYS_MAX: PhysAddr = PhysAddr(0x0000000080000000);
 

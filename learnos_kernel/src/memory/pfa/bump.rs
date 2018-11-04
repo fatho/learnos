@@ -1,7 +1,8 @@
 use crate::multiboot2::memmap::{Regions, Region};
 use crate::addr::PhysAddr;
 
-use super::{PageFrameAllocator, PageFrame, PageFrameNumber, PageFrameRegion};
+use super::super::{PageFrame, PageFrameNumber, PageFrameRegion};
+use super::{PageFrameAllocator};
 
 /// A simple page frame allocator that bumps the frame number for each allocation.
 /// It does not support freeing.
