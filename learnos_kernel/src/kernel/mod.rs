@@ -5,20 +5,24 @@ mod diagnostics;
 
 #[cfg(not(test))]
 use core::panic::PanicInfo;
+#[cfg(not(test))]
 use core::fmt::{Write};
 use core::iter;
+use core::str;
 
 use crate::addr::PhysAddr;
 use crate::vga;
 use crate::multiboot2;
 use crate::memory;
+use crate::acpi;
+use crate::acpi::AcpiTable;
 
 /// 
 pub fn main(args: &super::KernelArgs) -> ! {
     // Initialize VGA buffer. Besides panics, this is the only place where this should happen.
     vga::init(layout::low_phys_to_virt(vga::VGA_PHYS_ADDR));
 
-    debug!("{:?}", args);
+    debugln!("{:?}", args);
 
     // parse multiboot info
     let mb2: &multiboot2::Multiboot2Info = unsafe { &*layout::low_phys_to_virt(args.multiboot_start).as_ptr() };
@@ -28,17 +32,42 @@ pub fn main(args: &super::KernelArgs) -> ! {
     let memory_map = mb2.memory_map().expect("Bootloader did not provide memory map.");
 
     // compute start physical heap
-    let heap_start = mb2.modules()
-        .map(|m| m.mod_end())
+    let heap_start = mb2.modules().map(|m| m.mod_end())
         .chain(iter::once(args.kernel_end))
         .chain(iter::once(args.multiboot_end))
         .max().unwrap_or(PhysAddr(0));
 
     // initialize memory subsystem
     memory::init(heap_start, memory_map.regions());
-    debug!("Page frame allocation initialized.");
+    debugln!("Page frame allocation initialized.");
 
-    panic!("Test");
+    // find ACPI table
+    let start_search = layout::KERNEL_VIRTUAL_BASE.add(0x000E0000);
+    let end_search = layout::KERNEL_VIRTUAL_BASE.add(0x000FFFFF);
+    let rsdp = unsafe { acpi::Rsdp::find(start_search, end_search) };
+    if let Some(rsdp) = rsdp {
+        debugln!("ACPI revision {} found. OEM is {}", rsdp.revision(), rsdp.oem_id());
+        debugln!("RSDT at {:p}", rsdp.rsdt_address());
+        let rsdt: &acpi::Rsdt = unsafe { acpi::table_from_raw(layout::low_phys_to_virt(rsdp.rsdt_address())).expect("Invalid RSDT") };
+        for sdt_ptr in rsdt.sdt_pointers() {
+            let maybe_sdt: Option<&acpi::AnySdt> = unsafe { acpi::table_from_raw(layout::low_phys_to_virt(sdt_ptr)) };
+            if let Some(sdt) = maybe_sdt {
+                let sig_str = str::from_utf8(sdt.signature()).unwrap_or("XXXX");
+                debugln!("  - {:p} {} {}", sdt_ptr, sig_str, sdt.length());
+
+                if let Some(madt) = acpi::Madt::from_any(sdt) {
+                    debugln!("    Local APIC: {:p}", madt.local_apic_address());
+                    for r in madt.entries() {
+                        debugln!("    - {:?}", r);
+                    }
+                }
+            } else {
+                debugln!("  - {:p} INVALID", sdt_ptr);
+            }
+        }
+    } else {
+        debugln!("ACPI not found");
+    }
     
     halt!();
 }

@@ -1,4 +1,4 @@
-macro_rules! debug {
+macro_rules! debugln {
     ($($arg:tt)*) => {
         {
             let mut writer = crate::vga::writer();

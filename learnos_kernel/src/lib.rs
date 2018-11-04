@@ -5,7 +5,7 @@
 #![feature(asm)]
 #![feature(get_type_id)]
 #![feature(const_fn)]
-#![feature(format_args_nl)] // needed for debug! macro
+#![feature(format_args_nl)] // needed for debugln! macro
 
 #[macro_use]
 extern crate core;
@@ -23,6 +23,7 @@ macro_rules! halt {
 }
 
 // reusable parts
+pub mod acpi;
 pub mod addr;
 #[macro_use]
 pub mod diagnostics;
