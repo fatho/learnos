@@ -12,10 +12,11 @@ pub struct SerialPort(u16);
 impl SerialPort {
     /// Creates a new handle to a serial port.
     /// This is unsafe because it would allow multiple threads to concurrently access the same port.
-    pub unsafe fn new(port_number: u16) -> SerialPort {
+    pub const unsafe fn new(port_number: u16) -> SerialPort {
         SerialPort(port_number)
     }
 
+    #[inline]
     pub fn write(&mut self, data: &[u8]) {
         unsafe {
             let first_byte = data.as_ptr();
@@ -23,6 +24,7 @@ impl SerialPort {
         }
     }
 
+    #[inline]
     pub fn write_byte(&mut self, data: u8) {
         unsafe {
             asm!("out dx, al" : : "{dx}"(self.0), "{al}"(data) :  : "intel")

@@ -34,6 +34,11 @@ impl<T> Mutex<T> {
             })
         }
     }
+
+    pub fn with_lock<F, R>(&self, callback: F) -> R where F: FnOnce(&T) -> R {
+        let guard = self.lock();
+        callback(&*guard)
+    }
 }
 
 unsafe impl<T> Send for Mutex<T> {}

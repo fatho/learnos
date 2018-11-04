@@ -32,6 +32,8 @@ pub mod multiboot2;
 pub mod memory;
 pub mod serial;
 pub mod spin;
+pub mod interrupts;
+pub mod portio;
 
 // kernel specific part
 mod kernel;

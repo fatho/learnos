@@ -64,12 +64,6 @@
 %endmacro
 
 
-%macro jump_to_64 1
-    lgdt [GDT64.Pointer]
-    jmp GDT64.Code:%1
-%endmacro
-
-
 %macro load_page_table 1
     mov eax, %1
     mov cr3, eax

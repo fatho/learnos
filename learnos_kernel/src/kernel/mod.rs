@@ -5,7 +5,6 @@ mod diagnostics;
 
 #[cfg(not(test))]
 use core::panic::PanicInfo;
-#[cfg(not(test))]
 use core::fmt::{Write};
 use core::iter;
 use core::str;
@@ -16,13 +15,17 @@ use crate::multiboot2;
 use crate::memory;
 use crate::acpi;
 use crate::acpi::AcpiTable;
+use crate::spin;
+use crate::interrupts;
+
+static IDT: spin::Mutex<interrupts::idt::Idt> = spin::Mutex::new(interrupts::idt::Idt::new());
 
 /// 
 pub fn main(args: &super::KernelArgs) -> ! {
     // Initialize VGA buffer. Besides panics, this is the only place where this should happen.
     vga::init(layout::low_phys_to_virt(vga::VGA_PHYS_ADDR));
 
-    debugln!("{:?}", args);
+    debugln!("VGA initialized");
 
     // parse multiboot info
     let mb2: &multiboot2::Multiboot2Info = unsafe { &*layout::low_phys_to_virt(args.multiboot_start).as_ptr() };
@@ -68,7 +71,21 @@ pub fn main(args: &super::KernelArgs) -> ! {
     } else {
         debugln!("ACPI not found");
     }
-    
+
+    unsafe {
+        {
+            let idt = IDT.lock();
+            interrupts::idt::load_idt(&*idt);
+        }
+
+        // default mapping of PIC collides with CPU exceptions
+        interrupts::pic::remap(0x20, 0x28);
+
+        interrupts::pic::set_masks(0xFF, 0xFF);
+
+        interrupts::enable();
+    }
+
     halt!();
 }
 

@@ -34,6 +34,9 @@ impl AcpiTable for Madt {
 impl Madt {
     pub const SIGNATURE: &'static [u8; 4] = b"APIC";
 
+    /// Returns the physical address at which the local APIC is mapped.
+    /// If a local APIC address override is specified, that address is returned,
+    /// otherwise, the 32 bit address from the header is returned.
     pub fn local_apic_address(&self) -> PhysAddr {
         let default_addr = PhysAddr(self.local_apic_address as usize);
         self.entries()

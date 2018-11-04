@@ -46,11 +46,19 @@ _start32:
     ; Restore multiboot pointer into EDI, passing it as the first argument to kernel_main
     ; This is because `kernel_main` expects System V AMD64 ABI calling convention
     pop ebx
-    jump_to_64 kernel_main_trampoline
+    lgdt [gdt_data.pointer]
+    jmp gdt_data.kernel_code:kernel_main_trampoline
 
 ; jump to the trampoline, otherwise, we could not make the large jump from lowest 2 GiB to highest 2 GiB
 bits 64
 kernel_main_trampoline:
+    ; Set data segments (didn't seem to be necessary in QEMU though)
+    mov ax, GDT64.Data
+    mov ds, ax
+    mov es, ax
+    mov fs, ax
+    mov gs, ax
+    mov ss, ax
     ; move stack pointer to higher half, still pointing to the same physical memory
     add rsp, kernel_virtual_base
     mov rbp, rsp
@@ -205,7 +213,7 @@ GDT64:                           ; Global Descriptor Table (64-bit).
     dw 0                         ; Limit (low).
     dw 0                         ; Base (low).
     db 0                         ; Base (middle)
-    db 10011010b                 ; Access (exec/read).
+    db 10011010b                 ; Access. Pr=1, Prvl=0, 1, Ex=1, DC=0, RW=1, Ac=0
     db 10101111b                 ; Granularity, 64 bits flag, limit19:16.
     db 0                         ; Base (high).
     .Data: equ $ - GDT64         ; The data descriptor.
@@ -218,3 +226,24 @@ GDT64:                           ; Global Descriptor Table (64-bit).
     .Pointer:                    ; The GDT-pointer.
     dw $ - GDT64 - 1             ; Limit.
     dq GDT64                     ; Base.
+
+; see section 4.8.1, page 88, of AMD64 Architecture Programmer's Manual, Volume 2 System Programming
+gdt_data:
+    .null: equ $ - gdt_data
+        dd 0x0
+        dd 0x0
+    .kernel_code: equ $ - gdt_data
+        dd 0x0
+        dd 0x00209800
+    .kernel_data: equ $ - gdt_data
+        dd 0x0
+        dd 0x00209200
+    .user_code: equ $ - gdt_data
+        dd 0x0
+        dd 0x0020F800
+    .user_data: equ $ - gdt_data
+        dd 0x0
+        dd 0x0020F200
+    .pointer:
+        dw $ - gdt_data - 1
+        dq gdt_data
