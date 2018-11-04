@@ -3,19 +3,19 @@
 use crate::multiboot2;
 
 pub fn print_multiboot(mb2: &multiboot2::Multiboot2Info) {
-    debug!("MB2 info at {:p} length {}", mb2 as *const multiboot2::Multiboot2Info, mb2.length());
+    debugln!("MB2 info at {:p} length {}", mb2 as *const multiboot2::Multiboot2Info, mb2.length());
 
     for tag in mb2.tags() {
-        debug!("Multiboot tag: type={:?} size={}", tag.tag_type(), tag.size());
+        debugln!("Multiboot tag: type={:?} size={}", tag.tag_type(), tag.size());
     }
 
     for tag in mb2.modules() {
-        debug!("Module: start={:?} end={:?} cmd_line", tag.mod_start(), tag.mod_end());
+        debugln!("Module: start={:?} end={:?} cmd_line", tag.mod_start(), tag.mod_end());
     }
 
     for mmap in mb2.memory_map() {
-        debug!("Memory map:");
-        debug!("{: ^6} {: ^23} {: ^18}", "Type", "Physical Address", "Length");
+        debugln!("Memory map:");
+        debugln!("{: ^6} {: ^23} {: ^18}", "Type", "Physical Address", "Length");
         let mut total_available = 0;
         for e in mmap.regions() {
             let type_ch = match e.entry_type() {
@@ -25,14 +25,14 @@ pub fn print_multiboot(mb2: &multiboot2::Multiboot2Info) {
                 multiboot2::memmap::EntryType::DEFECTIVE => 'X',
                 _ => 'R',
             };
-            debug!("{: ^6} {: ^23p} {:016x}", type_ch, e.base_addr(), e.length());
+            debugln!("{: ^6} {: ^23p} {:016x}", type_ch, e.base_addr(), e.length());
             if e.is_available() {
                 total_available += e.length();
             }
         }
-        debug!(" Available: {} MiB", total_available / 1024 / 1024);
+        debugln!(" Available: {} MiB", total_available / 1024 / 1024);
     }
 
-    debug!("CmdLine: {:?}", mb2.boot_cmd_line());
-    debug!("Bootloader: {:?}", mb2.bootloader_name());
+    debugln!("CmdLine: {:?}", mb2.boot_cmd_line());
+    debugln!("Bootloader: {:?}", mb2.bootloader_name());
 }
