@@ -188,6 +188,16 @@ pub struct ProcessorLocalApic {
 
 impl ProcessorLocalApic {
     pub const ENTRY_TYPE: u8 = 0;
+
+    pub fn processor_id(&self) -> u8 {
+        self.processor_id
+    }
+    pub fn apic_id(&self) -> u8 {
+        self.apic_id
+    }
+    pub fn processor_enabled(&self) -> bool {
+        self.flags & 1 != 0
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

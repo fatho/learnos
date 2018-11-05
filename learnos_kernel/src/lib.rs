@@ -5,12 +5,19 @@
 #![feature(asm)]
 #![feature(get_type_id)]
 #![feature(const_fn)]
+#![feature(alloc)]
 #![feature(format_args_nl)] // needed for debugln! macro
+#![feature(extern_crate_item_prelude)]
+#![feature(alloc_error_handler)]
 
 #[macro_use]
 extern crate core;
+extern crate alloc;
+
 #[macro_use]
 extern crate static_assertions;
+#[macro_use]
+extern crate bitflags;
 
 macro_rules! halt {
     () => {
@@ -27,13 +34,13 @@ pub mod acpi;
 pub mod addr;
 #[macro_use]
 pub mod diagnostics;
-pub mod vga;
-pub mod multiboot2;
+pub mod interrupts;
 pub mod memory;
+pub mod multiboot2;
+pub mod portio;
 pub mod serial;
 pub mod spin;
-pub mod interrupts;
-pub mod portio;
+pub mod vga;
 
 // kernel specific part
 mod kernel;
@@ -47,6 +54,11 @@ pub struct KernelArgs {
     multiboot_start: addr::PhysAddr,
     multiboot_end: addr::PhysAddr,
 }
+
+/// Must be initialized before it can actually allocate things.
+/// Must only be initialized once, by the BSPs. All kernel threads run in the same address space.
+#[global_allocator]
+static KERNEL_ALLOCATOR: memory::heap::KernelAllocator = memory::heap::KernelAllocator::new();
 
 /// This is the Rust entry point that is called by the assembly boot code after switching to long mode.
 #[no_mangle]
