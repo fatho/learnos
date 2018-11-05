@@ -2,6 +2,7 @@
 
 pub mod pfa;
 pub mod vmm;
+pub mod heap;
 
 use crate::addr::{PhysAddr};
 

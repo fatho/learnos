@@ -11,6 +11,9 @@ use core::iter;
 use core::str;
 use core::slice;
 
+use ::alloc::vec::Vec;
+use ::alloc::boxed::Box;
+
 use crate::addr::{PhysAddr, VirtAddr};
 use crate::vga;
 use crate::multiboot2;
@@ -42,9 +45,21 @@ pub fn main(args: &super::KernelArgs) -> ! {
         .chain(iter::once(args.multiboot_end))
         .max().unwrap_or(PhysAddr(0));
 
-    // initialize pysical memory subsystem
+    // initialize page frame allocator
     memory::pfa::init(heap_start, memory_map.regions());
+    // the virtual memory system is functional after this as well
     debugln!("Page frame allocation initialized.");
+    // initialize kernel heap
+    unsafe { super::KERNEL_ALLOCATOR.init(layout::KERNEL_HEAP_START, layout::KERNEL_HEAP_END) };
+    debugln!("Kernel heap initialized.");
+
+    // test a scoped allocation
+    {
+        let the_box = Box::new(1234_u64);
+        debugln!("A box: {:?}", the_box);
+    }
+
+    let mut cpu_apics: Vec<u8> = Vec::with_capacity(16);
 
     // find ACPI table
     let start_search = layout::KERNEL_VIRTUAL_BASE.add(0x000E0000);
@@ -63,6 +78,12 @@ pub fn main(args: &super::KernelArgs) -> ! {
                 if let Some(madt) = acpi::Madt::from_any(sdt) {
                     debugln!("    Local APIC: {:p}", madt.local_apic_address());
                     for r in madt.entries() {
+                        match r {
+                            acpi::MadtEntry::ProcessorLocalApic(apic) => {
+                                cpu_apics.push(apic.apic_id());
+                            }
+                            _ => {}
+                        }
                         debugln!("    - {:?}", r);
                     }
                 }
@@ -72,6 +93,10 @@ pub fn main(args: &super::KernelArgs) -> ! {
         }
     } else {
         debugln!("ACPI not found");
+    }
+
+    for (cpu_idx, apic_id) in cpu_apics.iter().enumerate() {
+        debugln!("CPU#{}: apic_id={}", cpu_idx, apic_id);
     }
 
     // virtual memory test
@@ -104,6 +129,12 @@ pub fn main(args: &super::KernelArgs) -> ! {
     }
 
     halt!();
+}
+
+#[cfg(not(test))]
+#[alloc_error_handler]
+fn foo(layout: core::alloc::Layout) -> ! {
+    panic!("Failed to allocate {:?}", layout)
 }
 
 #[panic_handler]

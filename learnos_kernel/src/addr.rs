@@ -16,7 +16,7 @@ pub struct VirtAddr(pub usize);
 pub struct PhysAddr(pub usize);
 
 impl VirtAddr {
-    pub fn add(self, offset: usize) -> Self {
+    pub const fn add(self, offset: usize) -> Self {
         VirtAddr(self.0 + offset)
     }
 
@@ -77,6 +77,7 @@ pub fn align_up(num: usize, alignment: usize) -> usize {
 }
 
 /// Return the largest `x` that is a multiple of `alignment` such that `x <= num`.
+#[inline]
 pub fn align_down(num: usize, alignment: usize) -> usize {
     if alignment == 0 {
         num
