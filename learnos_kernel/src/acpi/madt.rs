@@ -90,6 +90,7 @@ impl Iterator for MadtHeaderIter {
         }
     }
 }
+impl core::iter::FusedIterator for MadtHeaderIter {}
 
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub enum MadtEntry {

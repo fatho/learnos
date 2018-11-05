@@ -75,3 +75,4 @@ impl Iterator for XsdtPointerIter {
         }
     }
 }
+impl core::iter::FusedIterator for XsdtPointerIter {}

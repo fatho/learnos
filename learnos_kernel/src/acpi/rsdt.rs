@@ -74,3 +74,4 @@ impl Iterator for RsdtPointerIter {
         }
     }
 }
+impl core::iter::FusedIterator for RsdtPointerIter {}

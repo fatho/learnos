@@ -2,7 +2,7 @@
 
 use crate::addr::{PhysAddr};
 
-use core::iter::{Iterator};
+use core::iter::{Iterator, FusedIterator};
 use core::fmt;
 
 #[repr(C)]
@@ -49,6 +49,7 @@ impl Iterator for Regions {
         }
     }
 }
+impl FusedIterator for Regions {}
 
 /// The type of an entry in the memory map.
 #[derive(PartialEq, Eq, Copy, Clone)]

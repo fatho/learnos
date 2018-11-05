@@ -3,7 +3,7 @@
 use crate::addr;
 use crate::addr::{PhysAddr};
 
-use core::iter::{Iterator};
+use core::iter::{Iterator, FusedIterator};
 use core::str;
 use core::slice;
 
@@ -112,6 +112,8 @@ impl Iterator for TagsIter {
         }
     }
 }
+
+impl FusedIterator for TagsIter {}
 
 #[repr(C, packed)]
 pub struct ModuleTag {
