@@ -166,7 +166,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
     };
 
     // Also dump the panic to the serial port.
-    let mut com1 = unsafe { crate::serial::SerialPort::new(crate::serial::COM1_ADDR) };
+    let mut com1 = unsafe { bare_metal::io::com::SerialPort::new(bare_metal::io::com::COM1_ADDR) };
     writeln!(com1, "{}", panic_info);
 
     halt!();

@@ -2,7 +2,10 @@
 
 use core::ops;
 
+pub mod com;
+
 /// A CPU I/O port number.
+#[derive(Debug, Eq, PartialEq, Copy, Clone, PartialOrd, Ord)]
 pub struct PortNumber(pub u16);
 
 impl ops::Add<u16> for PortNumber {
@@ -13,9 +16,16 @@ impl ops::Add<u16> for PortNumber {
     }
 }
 
+// unsafe primitives
+
 #[inline]
 pub unsafe fn outb(port: PortNumber, data: u8) {
     asm!("out dx, al" : : "{dx}"(port.0), "{al}"(data) : : "intel", "volatile" );
+}
+
+#[inline]
+pub unsafe fn outsb(port: PortNumber, data: &[u8]) {
+    asm!("rep outsb" : : "{rsi}"(data.as_ptr()), "{dx}"(port), "{rcx}"(data.len()) :  : "intel")
 }
 
 #[inline]
