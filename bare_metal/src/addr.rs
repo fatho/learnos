@@ -60,12 +60,12 @@ impl_addr_arith!(PhysAddr);
 
 impl fmt::Pointer for PhysAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "PHYS_0x{:016x}", self.0)
+        write!(f, "0x{:016x}_P", self.0)
     }
 }
 
 impl fmt::Pointer for VirtAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "VIRT_0x{:016x}", self.0)
+        write!(f, "0x{:016x}_V", self.0)
     }
 }
