@@ -61,9 +61,8 @@ pub struct KernelArgs {
 
 /// Must be initialized before it can actually allocate things.
 /// Must only be initialized once, by the BSPs. All kernel threads run in the same address space.
-#[global_allocator]
+#[cfg_attr(not(test), global_allocator)]
 static KERNEL_ALLOCATOR: memory::heap::KernelAllocator = memory::heap::KernelAllocator::new();
-
 
 // For now, this kernel is 64 bit only. Ensure that `usize` has the right size.
 assert_eq_size!(ptr_size; usize, u64);

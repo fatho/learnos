@@ -26,7 +26,7 @@ use crate::interrupts;
 
 static IDT: spinlock::Mutex<interrupts::idt::Idt> = spinlock::Mutex::new(interrupts::idt::Idt::new());
 
-/// 
+
 pub fn main(args: &super::KernelArgs) -> ! {
     // Initialize VGA buffer. Besides panics, this is the only place where this should happen.
     vga::init(layout::low_phys_to_virt(vga::VGA_PHYS_ADDR));
