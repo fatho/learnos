@@ -43,7 +43,7 @@ use bare_metal::*;
 pub mod diagnostics;
 pub mod interrupts;
 pub mod memory;
-pub mod serial;
+pub mod globals;
 pub mod vga;
 
 // kernel specific part
