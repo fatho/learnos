@@ -2,7 +2,7 @@
 //! The allocator must be instantiated in the root module as a static variable and marked with the #[global_allocator] attribute.
 
 use bare_metal::{Alignable, VirtAddr};
-use crate::spin::Mutex;
+use spinlock::Mutex;
 use ::alloc::alloc;
 
 /// A bump allocator based heap. It can only allocate, but not free.

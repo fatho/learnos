@@ -21,10 +21,10 @@ use acpi::AcpiTable;
 use crate::vga;
 use multiboot2;
 use crate::memory;
-use crate::spin;
+use spinlock;
 use crate::interrupts;
 
-static IDT: spin::Mutex<interrupts::idt::Idt> = spin::Mutex::new(interrupts::idt::Idt::new());
+static IDT: spinlock::Mutex<interrupts::idt::Idt> = spinlock::Mutex::new(interrupts::idt::Idt::new());
 
 /// 
 pub fn main(args: &super::KernelArgs) -> ! {

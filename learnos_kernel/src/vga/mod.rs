@@ -5,14 +5,14 @@
 //! only one VGA buffer.
 
 use bare_metal::{PhysAddr, VirtAddr};
-use crate::spin;
+use spinlock;
 use core::fmt;
 
 mod writer;
 pub use self::writer::Writer;
 
 /// Provides a single synchronized access to the console.
-pub static GLOBAL_WRITER: spin::Mutex<Option<Writer>> = spin::Mutex::new(None);
+pub static GLOBAL_WRITER: spinlock::Mutex<Option<Writer>> = spinlock::Mutex::new(None);
 
 /// Intialize the global VGA subsystem.
 pub fn init(vga_base: VirtAddr) {

@@ -5,6 +5,7 @@ members = [
     "acpi",
     "bare_metal",
     "multiboot2",
+    "spinlock",
     # binary tying everything together
     "learnos_kernel",
 ]

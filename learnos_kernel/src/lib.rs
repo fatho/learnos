@@ -25,6 +25,7 @@ extern crate bitflags;
 extern crate bare_metal;
 extern crate acpi;
 extern crate multiboot2;
+extern crate spinlock;
 
 macro_rules! halt {
     () => {
@@ -43,7 +44,6 @@ pub mod diagnostics;
 pub mod interrupts;
 pub mod memory;
 pub mod serial;
-pub mod spin;
 pub mod vga;
 
 // kernel specific part

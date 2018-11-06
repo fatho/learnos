@@ -3,7 +3,7 @@
 pub mod bump;
 
 use bare_metal::{PhysAddr};
-use crate::spin::Mutex;
+use spinlock::Mutex;
 use multiboot2::memmap::Regions;
 
 use super::{PageFrame};

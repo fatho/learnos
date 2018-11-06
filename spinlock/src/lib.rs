@@ -1,5 +1,7 @@
 //! Implements a simple spin-lock based mutex.
 
+#![cfg_attr(not(test), no_std)]
+
 use core::cell::UnsafeCell;
 use core::sync::atomic::{AtomicBool, Ordering};
 use core::ops::{Deref, DerefMut};
