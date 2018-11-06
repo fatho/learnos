@@ -69,9 +69,11 @@ impl PageFrameRegion {
     }
     /// Construct the smallest page frame region that is fully including the given physical memory region.
     pub fn new_including(start: PhysAddr, end: PhysAddr) -> PageFrameRegion {
+        let end_base = end.0 >> PAGE_ALIGN_BITS;
+        let end_offset = if end.0 & (PAGE_SIZE - 1) != 0 { 1} else { 0 };
         PageFrameRegion {
             start: PageFrameNumber(start.align_down(PAGE_SIZE).0 >> PAGE_ALIGN_BITS),
-            end: PageFrameNumber(end.align_up(PAGE_SIZE).0 >> PAGE_ALIGN_BITS)
+            end: PageFrameNumber(end_base + end_offset)
         }
     }
 
@@ -117,11 +119,8 @@ mod test {
         assert!(around_ac.length() == 4, "around_ac = {:?}", around_ac);
         assert!(around_ac.start.0 == 4 && around_ac.end.0 == 8, "around_ac = {:?}", around_ac);
 
-        // TODO: Cannot construct page frame region for highest frame.
-        // Only relevant on systems with 256 TiB memory.
-
-        // let whole_mem = PageFrameRegion::new_including(PhysAddr(0), PhysAddr(0xFFFFFFFFFFFFFFFF));
-        // assert!(!whole_mem.is_empty());
-        // assert!(whole_mem.length() == 0x0008_0000_0000_0000)
+        let whole_mem = PageFrameRegion::new_including(PhysAddr(0), PhysAddr(0xFFFFFFFFFFFFFFFF));
+        assert!(!whole_mem.is_empty());
+        assert_eq!(whole_mem.length(), 0x0010_0000_0000_0000)
     }
 }
