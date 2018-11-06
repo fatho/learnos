@@ -4,6 +4,7 @@ members = [
     # libraries
     "acpi",
     "bare_metal",
+    "multiboot2",
     # binary tying everything together
     "learnos_kernel",
 ]

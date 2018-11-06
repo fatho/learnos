@@ -1,9 +1,9 @@
 //! Module responsible for displaying diagnostic messages on startup.
 
-use crate::multiboot2;
+use multiboot2;
 
 pub fn print_multiboot(mb2: &multiboot2::Multiboot2Info) {
-    debugln!("MB2 info at {:p} length {}", mb2 as *const multiboot2::Multiboot2Info, mb2.length());
+    debugln!("MB2 info at {:p} size {}", mb2 as *const multiboot2::Multiboot2Info, mb2.size());
 
     for tag in mb2.tags() {
         debugln!("Multiboot tag: type={:?} size={}", tag.tag_type(), tag.size());

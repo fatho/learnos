@@ -24,6 +24,7 @@ extern crate bitflags;
 // other crates from this workspace
 extern crate bare_metal;
 extern crate acpi;
+extern crate multiboot2;
 
 macro_rules! halt {
     () => {
@@ -41,7 +42,6 @@ use bare_metal::*;
 pub mod diagnostics;
 pub mod interrupts;
 pub mod memory;
-pub mod multiboot2;
 pub mod serial;
 pub mod spin;
 pub mod vga;

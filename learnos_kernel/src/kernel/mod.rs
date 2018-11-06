@@ -19,7 +19,7 @@ use acpi;
 use acpi::AcpiTable;
 
 use crate::vga;
-use crate::multiboot2;
+use multiboot2;
 use crate::memory;
 use crate::spin;
 use crate::interrupts;

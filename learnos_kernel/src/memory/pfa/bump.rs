@@ -1,4 +1,4 @@
-use crate::multiboot2::memmap::{Regions, Region};
+use multiboot2::memmap::{Regions, Region};
 use bare_metal::PhysAddr;
 
 use super::super::{PageFrame, PageFrameNumber, PageFrameRegion};

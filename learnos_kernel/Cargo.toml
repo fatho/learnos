@@ -15,6 +15,7 @@ bitflags = "1.0.0"
 
 acpi = { path = "../acpi" }
 bare_metal = { path = "../bare_metal" }
+multiboot2 = {path = "../multiboot2"}
 
 [build-dependencies]
 nasm-rs = "0.1.3"

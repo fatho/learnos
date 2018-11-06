@@ -4,7 +4,7 @@ pub mod bump;
 
 use bare_metal::{PhysAddr};
 use crate::spin::Mutex;
-use crate::multiboot2::memmap::Regions;
+use multiboot2::memmap::Regions;
 
 use super::{PageFrame};
 

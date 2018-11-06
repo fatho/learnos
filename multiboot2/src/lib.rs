@@ -1,4 +1,16 @@
+#![cfg_attr(not(test), no_std)]
 //! Parser for the Multiboot2 information structures provided by the bootloader.
+//! The lifetimes of the data extracted from the multiboot structures is 'static,
+//! because it has been already present before Rust code is executed and it's not
+//! going to be dropped.
+//! 
+//! However, when the physical memory where those data structures is unmapped or
+//! remapped at a different address, the returned references are no longer valid.
+//! If the mapping is not kept, make sure to drop all references first.
+//! 
+//! The safety of this parser depends on the bootloader being multiboot2 compliant.
+//! If the bootloader provides bogus data, trying to parse it using this structures
+//! likely ends in sadness.
 
 use bare_metal::{Alignable, PhysAddr};
 
@@ -18,7 +30,7 @@ pub struct Multiboot2Info {
 
 impl Multiboot2Info {
 
-    pub fn length(&self) -> usize {
+    pub fn size(&self) -> usize {
         self.total_size as usize
     }
 
@@ -92,6 +104,8 @@ impl TagType {
     const MEMORY_MAP: TagType = TagType(6);
 }
 
+/// An iterator over the tags in the multiboot structure.
+/// Construct using `Multiboot2Info::tags`.
 pub struct TagsIter {
     current: *const Tag,
 }
@@ -119,14 +133,18 @@ pub struct ModuleTag {
     common: Tag,
     mod_start: u32,
     mod_end: u32,
+    /// First byte of the command line. As the command line is specified to be a
+    /// null-terminated UTF-8 string, it always consists of at least one byte.
     cmd_line_start: u8,
 }
 
 impl ModuleTag {
+    /// Physical address where the module begins.
     pub fn mod_start(&self) -> PhysAddr {
         PhysAddr(self.mod_start as usize)
     }
 
+    /// Physical address where the module ends (not included).
     pub fn mod_end(&self) -> PhysAddr {
         PhysAddr(self.mod_end as usize)
     }
@@ -152,6 +170,8 @@ impl ModuleTag {
 #[repr(C, packed)]
 pub struct BootLoaderTag {
     common: Tag,
+    /// First byte of the name. As the name is specified to be a
+    /// null-terminated UTF-8 string, it always consists of at least one byte.
     name_start: u8,
 }
 
@@ -177,6 +197,8 @@ impl BootLoaderTag {
 #[repr(C, packed)]
 pub struct BootCommandLineTag {
     common: Tag,
+    /// First byte of the command line. As the command line is specified to be a
+    /// null-terminated UTF-8 string, it always consists of at least one byte.
     cmd_line_start: u8,
 }
 
@@ -195,5 +217,21 @@ impl BootCommandLineTag {
             str::from_utf8(slice::from_raw_parts(cmd_line_ptr, cmd_line_length))
                 .expect("Invalid UTF-8 string in Multiboot tag")
         }
+    }
+}
+
+// rust doesn't see that we're conjuring the structs from raw pointers
+#[allow(dead_code)]
+mod raw {
+    #[repr(C, packed)]
+    pub struct Header {
+        pub total_size: u32,
+        pub reserved: u32
+    }
+
+    #[repr(C, packed)]
+    pub struct Tag {
+        pub tag_type: u32,
+        pub size: u32
     }
 }
