@@ -4,69 +4,53 @@
 pub trait Alignable {
     type Alignment;
 
-    /// Return the smallest `x` that is a multiple of `alignment` such that `x >= num`.
+    /// Returns the smallest `x` that is a multiple of `alignment` such that `x >= num`.
     fn align_up(self, alignment: Self::Alignment) -> Self;
 
-    /// Return the largest `x` that is a multiple of `alignment` such that `x <= num`.
+    /// Returns the largest `x` that is a multiple of `alignment` such that `x <= num`.
     fn align_down(self, alignment: Self::Alignment) -> Self;
+
+    /// Returns whether the value is aligned to the given alignment.
+    fn is_aligned(self, alignment: Self::Alignment) -> bool;
 }
 
 
-macro_rules! align_up_impl {
-    ($num:ident, $alignment:ident) => {
-        if $alignment == 0 {
-            $num
-        } else {
-            let mask = $alignment - 1;
-            assert!($alignment & mask == 0, "alignment must be power of two");
-            let padding = $alignment - ($num & mask);
-            $num + (padding & mask)
-        }   
-    };
-}
-
-macro_rules! align_down_impl {
-    ($num:ident, $alignment:ident) => {
-        if $alignment == 0 {
-            $num
-        } else {
-            let mask = $alignment - 1;
-            assert!($alignment & mask == 0, "alignment must be power of two");
-            let padding = $num & mask;
-            $num - padding
+macro_rules! align_impl {
+    ($numtype:tt) => {
+        impl Alignable for $numtype {
+            type Alignment = $numtype;
+            fn align_up(self, alignment: Self) -> Self {
+                if alignment == 0 {
+                    self
+                } else {
+                    let mask = alignment - 1;
+                    assert!(alignment & mask == 0, "alignment must be power of two");
+                    let padding = alignment - (self & mask);
+                    self + (padding & mask)
+                }   
+            }
+            fn align_down(self, alignment: Self) -> Self {
+                if alignment == 0 {
+                    self
+                } else {
+                    let mask = alignment - 1;
+                    assert!(alignment & mask == 0, "alignment must be power of two");
+                    let padding = self & mask;
+                    self - padding
+                }
+            }
+            fn is_aligned(self, alignment: Self) -> bool {
+                self.align_down(alignment) == self
+            }
         }
     };
 }
 
-impl Alignable for usize {
-    type Alignment = usize;
-    fn align_up(self, alignment: Self) -> Self { align_up_impl!(self, alignment)  }
-    fn align_down(self, alignment: Self) -> Self { align_down_impl!(self, alignment) }
-}
-
-impl Alignable for u64 {
-    type Alignment = u64;
-    fn align_up(self, alignment: Self) -> Self { align_up_impl!(self, alignment)  }
-    fn align_down(self, alignment: Self) -> Self { align_down_impl!(self, alignment) }
-}
-
-impl Alignable for u32 {
-    type Alignment = u32;
-    fn align_up(self, alignment: Self) -> Self { align_up_impl!(self, alignment)  }
-    fn align_down(self, alignment: Self) -> Self { align_down_impl!(self, alignment) }
-}
-
-impl Alignable for u16 {
-    type Alignment = u16;
-    fn align_up(self, alignment: Self) -> Self { align_up_impl!(self, alignment)  }
-    fn align_down(self, alignment: Self) -> Self { align_down_impl!(self, alignment) }
-}
-
-impl Alignable for u8 {
-    type Alignment = u8;
-    fn align_up(self, alignment: Self) -> Self { align_up_impl!(self, alignment)  }
-    fn align_down(self, alignment: Self) -> Self { align_down_impl!(self, alignment) }
-}
+align_impl!(usize);
+align_impl!(u64);
+align_impl!(u32);
+align_impl!(u16);
+align_impl!(u8);
 
 #[cfg(test)]
 mod test {

@@ -12,7 +12,7 @@ pub const PAGE_ALIGN_BITS: u32 = 12;
 pub const PAGE_SIZE: usize = 1 << PAGE_ALIGN_BITS;
 
 /// Number of a physical page frame, counted from the start.
-/// The first page frame at physicall address 0x0 has number zero.
+/// The first page frame at physical address 0x0 has number zero.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Copy, Clone)]
 pub struct PageFrameNumber(usize);
 

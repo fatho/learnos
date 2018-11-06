@@ -5,6 +5,7 @@ members = [
     "acpi",
     "bare_metal",
     "interrupts",
+    "memory",
     "multiboot2",
     "spinlock",
     # binary tying everything together

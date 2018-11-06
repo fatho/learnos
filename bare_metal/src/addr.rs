@@ -37,6 +37,10 @@ macro_rules! impl_addr_arith {
             fn align_down(self, alignment: usize) -> Self {
                 $addr(self.0.align_down(alignment))
             }
+
+            fn is_aligned(self, alignment: usize) -> bool {
+                self.align_down(alignment) == self
+            }
         }
 
         impl ops::Add<usize> for $addr {
@@ -50,6 +54,20 @@ macro_rules! impl_addr_arith {
         impl ops::AddAssign<usize> for $addr {
             fn add_assign(&mut self, other: usize) {
                 self.0 += other;
+            }
+        }
+
+        impl ops::Sub<usize> for $addr {
+            type Output = $addr;
+
+            fn sub(self, other: usize) -> Self::Output {
+                $addr(self.0 - other)
+            }
+        }
+
+        impl ops::SubAssign<usize> for $addr {
+            fn sub_assign(&mut self, other: usize) {
+                self.0 -= other;
             }
         }
     };
