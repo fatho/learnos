@@ -14,12 +14,13 @@ use core::slice;
 use ::alloc::vec::Vec;
 use ::alloc::boxed::Box;
 
-use crate::addr::{PhysAddr, VirtAddr};
+use bare_metal::{PhysAddr, VirtAddr};
+use acpi;
+use acpi::AcpiTable;
+
 use crate::vga;
 use crate::multiboot2;
 use crate::memory;
-use crate::acpi;
-use crate::acpi::AcpiTable;
 use crate::spin;
 use crate::interrupts;
 
@@ -62,8 +63,8 @@ pub fn main(args: &super::KernelArgs) -> ! {
     let mut cpu_apics: Vec<u8> = Vec::with_capacity(16);
 
     // find ACPI table
-    let start_search = layout::KERNEL_VIRTUAL_BASE.add(0x000E0000);
-    let end_search = layout::KERNEL_VIRTUAL_BASE.add(0x000FFFFF);
+    let start_search = layout::KERNEL_VIRTUAL_BASE + 0x000E0000;
+    let end_search = layout::KERNEL_VIRTUAL_BASE + 0x000FFFFF;
     let rsdp = unsafe { acpi::Rsdp::find(start_search, end_search) };
     if let Some(rsdp) = rsdp {
         debugln!("ACPI revision {} found. OEM is {}", rsdp.revision(), rsdp.oem_id());

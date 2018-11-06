@@ -1,7 +1,7 @@
 //! Provides a kernel space heap allocator.
 //! The allocator must be instantiated in the root module as a static variable and marked with the #[global_allocator] attribute.
 
-use crate::addr::VirtAddr;
+use bare_metal::{Alignable, VirtAddr};
 use crate::spin::Mutex;
 use ::alloc::alloc;
 
@@ -29,7 +29,7 @@ impl BumpHeap {
 
     pub unsafe fn alloc(&mut self, layout: alloc::Layout) -> *mut u8 {
         let start = self.allocated.align_up(layout.align());
-        let end = start.add(layout.size());
+        let end = start + layout.size();
         if self.reserve(end) {
             self.allocated = end;
             start.as_mut_ptr()
@@ -53,7 +53,7 @@ impl BumpHeap {
                 None => return false,
                 Some(frame) => {
                     super::vmm::mmap(self.reserved, frame.start_address());
-                    self.reserved = self.reserved.add(super::PAGE_SIZE);
+                    self.reserved = self.reserved + super::PAGE_SIZE;
                 }
             }
         }

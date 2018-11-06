@@ -1,4 +1,4 @@
-use crate::addr::{VirtAddr, PhysAddr};
+use bare_metal::{Alignable, VirtAddr, PhysAddr};
 use super::util;
 use super::{AcpiTable, AnySdt};
 
@@ -29,6 +29,7 @@ impl Rsdp {
 
     /// Find the Root System Description Pointer table in the given virtual memory range.
     pub unsafe fn find(start: VirtAddr, end: VirtAddr) -> Option<&'static Rsdp> {
+        // the signature is guaranteed to be 16 byte aligned
         let mut current = start.align_up(16);
 
         // little endian representation of the signature
@@ -42,7 +43,7 @@ impl Rsdp {
                     return Some(&*rsdp)
                 }
             }
-            current = current.add(16);
+            current += 16;
         }
         None
     }

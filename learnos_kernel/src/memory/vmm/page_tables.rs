@@ -1,4 +1,4 @@
-use crate::addr::PhysAddr;
+use bare_metal::PhysAddr;
 
 /// An entry in a page table.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

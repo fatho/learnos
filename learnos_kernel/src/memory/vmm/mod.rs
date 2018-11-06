@@ -8,7 +8,7 @@ pub mod page_tables;
 
 use self::page_tables::{PageTableEntry};
 use super::pfa;
-use crate::addr::{PhysAddr, VirtAddr};
+use bare_metal::{Alignable, PhysAddr, VirtAddr};
 
 /// Index into the PML4 where it recursively maps onto itself.
 pub const PML4_RECURSIVE_MAPPING_INDEX: usize = 510;

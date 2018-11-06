@@ -10,14 +10,20 @@
 #![feature(extern_crate_item_prelude)]
 #![feature(alloc_error_handler)]
 
+// built-in crates
 #[macro_use]
 extern crate core;
 extern crate alloc;
 
+// crates from crates.io
 #[macro_use]
 extern crate static_assertions;
 #[macro_use]
 extern crate bitflags;
+
+// other crates from this workspace
+extern crate bare_metal;
+extern crate acpi;
 
 macro_rules! halt {
     () => {
@@ -30,14 +36,12 @@ macro_rules! halt {
 }
 
 // reusable parts
-pub mod acpi;
-pub mod addr;
+use bare_metal::*;
 #[macro_use]
 pub mod diagnostics;
 pub mod interrupts;
 pub mod memory;
 pub mod multiboot2;
-pub mod portio;
 pub mod serial;
 pub mod spin;
 pub mod vga;
@@ -49,16 +53,20 @@ mod kernel;
 #[repr(C, packed)]
 #[derive(Debug, Copy, Clone)]
 pub struct KernelArgs {
-    kernel_start: addr::PhysAddr,
-    kernel_end: addr::PhysAddr,
-    multiboot_start: addr::PhysAddr,
-    multiboot_end: addr::PhysAddr,
+    kernel_start: PhysAddr,
+    kernel_end: PhysAddr,
+    multiboot_start: PhysAddr,
+    multiboot_end: PhysAddr,
 }
 
 /// Must be initialized before it can actually allocate things.
 /// Must only be initialized once, by the BSPs. All kernel threads run in the same address space.
 #[global_allocator]
 static KERNEL_ALLOCATOR: memory::heap::KernelAllocator = memory::heap::KernelAllocator::new();
+
+
+// For now, this kernel is 64 bit only. Ensure that `usize` has the right size.
+assert_eq_size!(ptr_size; usize, u64);
 
 /// This is the Rust entry point that is called by the assembly boot code after switching to long mode.
 #[no_mangle]

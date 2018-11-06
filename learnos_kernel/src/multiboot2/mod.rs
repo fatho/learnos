@@ -1,7 +1,6 @@
 //! Parser for the Multiboot2 information structures provided by the bootloader.
 
-use crate::addr;
-use crate::addr::{PhysAddr};
+use bare_metal::{Alignable, PhysAddr};
 
 use core::iter::{Iterator, FusedIterator};
 use core::str;
@@ -76,7 +75,7 @@ impl Tag {
     }
 
     unsafe fn next(&self) -> *const Tag {
-        let offset = addr::align_up(self.size(), 8);
+        let offset = self.size().align_up(8);
         ((self as *const Tag) as *const u8).add(offset) as *const Tag
     }
 }

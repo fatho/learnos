@@ -4,7 +4,7 @@ pub mod pfa;
 pub mod vmm;
 pub mod heap;
 
-use crate::addr::{PhysAddr};
+use bare_metal::{Alignable, PhysAddr};
 
 /// Number of trailing zeros in a page aligned address.
 pub const PAGE_ALIGN_BITS: u32 = 12;
@@ -90,7 +90,7 @@ impl PageFrameRegion {
 
 #[cfg(test)]
 mod test {
-    use crate::addr::{PhysAddr};
+    use bare_metal::{PhysAddr};
     use super::PageFrameRegion;
 
     #[test]

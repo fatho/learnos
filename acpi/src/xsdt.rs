@@ -1,17 +1,18 @@
-use crate::addr::{PhysAddr};
+use bare_metal::{PhysAddr};
 use core::mem;
 
 use super::{AnySdt, SdtHeader, AcpiTable};
 use super::util;
 
-/// The Root System Descriptor Table. It contains 32 bit pointers to all other ACPI tables.
+/// The eXtended System Descriptor Table. It is essentially the same as the RSDT,
+/// but contains 64 bit pointers instead of 32 bit pointers.
 #[repr(C, packed)]
-pub struct Rsdt {
+pub struct Xsdt {
     header: SdtHeader,
-    sdt_pointers: [u32; 0]
+    sdt_pointers: [u64; 0]
 }
 
-impl AcpiTable for Rsdt {
+impl AcpiTable for Xsdt {
     fn is_valid(&self) -> bool {
         let checksum_valid = unsafe { util::acpi_table_checksum(self) == 0 };
         let sig_valid = self.header.signature() == Self::SIGNATURE;
@@ -24,7 +25,7 @@ impl AcpiTable for Rsdt {
 
     fn from_any(any: &AnySdt) -> Option<&Self> {
         if any.signature() == Self::SIGNATURE {
-            let this = unsafe { &*(any as *const AnySdt as *const Rsdt) };
+            let this = unsafe { &*(any as *const AnySdt as *const Xsdt) };
             Some(this)
         } else {
             None
@@ -32,19 +33,19 @@ impl AcpiTable for Rsdt {
     }
 }
 
-impl Rsdt {
-    pub const SIGNATURE: &'static [u8; 4] = b"RSDT";
+impl Xsdt {
+    pub const SIGNATURE: &'static [u8; 4] = b"XSDT";
 
-    /// Returns the number of tables that are referenced by this RSDT.
+    /// Returns the number of tables that are referenced by this XSDT.
     pub fn num_entries(&self) -> usize {
         (self.length() - mem::size_of::<SdtHeader>()) / mem::size_of::<u32>()
     }
 
     /// Returns an iterator over all pointers stored in this table.
-    pub fn sdt_pointers(&self) -> RsdtPointerIter {
+    pub fn sdt_pointers(&self) -> XsdtPointerIter {
         unsafe {
             let first = self.sdt_pointers.as_ptr();
-            RsdtPointerIter {
+            XsdtPointerIter {
                 current: first,
                 last: first.add(self.num_entries())
             }
@@ -53,12 +54,12 @@ impl Rsdt {
 }
 
 #[derive(Debug, Clone, Eq, PartialEq)]
-pub struct RsdtPointerIter {
-    current: *const u32,
-    last: *const u32,
+pub struct XsdtPointerIter {
+    current: *const u64,
+    last: *const u64,
 }
 
-impl Iterator for RsdtPointerIter {
+impl Iterator for XsdtPointerIter {
     type Item = PhysAddr;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -74,4 +75,4 @@ impl Iterator for RsdtPointerIter {
         }
     }
 }
-impl core::iter::FusedIterator for RsdtPointerIter {}
+impl core::iter::FusedIterator for XsdtPointerIter {}

@@ -1,4 +1,4 @@
-use crate::addr::{PhysAddr};
+use bare_metal::{PhysAddr};
 
 use super::{AnySdt, SdtHeader, AcpiTable};
 use super::util;

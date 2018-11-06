@@ -4,7 +4,7 @@
 //! concurrent modification of the same memory location, as there is
 //! only one VGA buffer.
 
-use crate::addr::{PhysAddr, VirtAddr};
+use bare_metal::{PhysAddr, VirtAddr};
 use crate::spin;
 use core::fmt;
 

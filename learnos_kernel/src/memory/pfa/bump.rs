@@ -1,5 +1,5 @@
 use crate::multiboot2::memmap::{Regions, Region};
-use crate::addr::PhysAddr;
+use bare_metal::PhysAddr;
 
 use super::super::{PageFrame, PageFrameNumber, PageFrameRegion};
 use super::{PageFrameAllocator};
@@ -81,5 +81,5 @@ impl PageFrameAllocator for BumpAllocator {
 }
 
 fn page_frames_in_region(region: &Region) -> PageFrameRegion {
-    PageFrameRegion::new_included_in(region.base_addr(), region.base_addr().add(region.length()))
+    PageFrameRegion::new_included_in(region.base_addr(), region.base_addr() + region.length())
 }

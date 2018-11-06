@@ -1,3 +1,5 @@
+#![cfg_attr(not(test), no_std)]
+
 pub mod util;
 mod rsdp;
 mod rsdt;
@@ -9,7 +11,7 @@ pub use self::rsdt::*;
 pub use self::xsdt::*;
 pub use self::madt::*;
 
-use crate::addr::{VirtAddr};
+use bare_metal::{VirtAddr};
 
 pub trait AcpiTable {
     fn is_valid(&self) -> bool;
@@ -74,5 +76,13 @@ pub unsafe fn table_from_raw<T: AcpiTable>(table_addr: VirtAddr) -> Option<&'sta
         Some(&*table)
     } else {
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn it_works() {
+        assert_eq!(2 + 2, 4);
     }
 }
