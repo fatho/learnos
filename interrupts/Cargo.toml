@@ -1,0 +1,10 @@
+[package]
+name = "interrupts"
+version = "0.1.0"
+authors = ["Fabian Thorand <f.thorand@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+static_assertions = "0.2.5"
+
+bare_metal = { path = "../bare_metal" }

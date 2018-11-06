@@ -4,6 +4,7 @@ members = [
     # libraries
     "acpi",
     "bare_metal",
+    "interrupts",
     "multiboot2",
     "spinlock",
     # binary tying everything together

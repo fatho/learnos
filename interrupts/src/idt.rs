@@ -22,6 +22,8 @@ pub struct Idtr {
 pub struct Idt {
     entries: [IdtEntry; 256]
 }
+
+// sanity check that everything adds up in terms of size
 assert_eq_size!(idt_size; Idt, [u64; 512]);
 
 impl Idt {
@@ -59,6 +61,8 @@ pub struct IdtEntry {
     offset_high: u32,
     reserved: u32,
 }
+
+// sanity check that everything adds up in terms of size
 assert_eq_size!(idt_entry_size; IdtEntry, [u64; 2]);
 
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]

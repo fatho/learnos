@@ -1,3 +1,10 @@
+#![feature(asm)]
+#![cfg_attr(not(test), no_std)]
+
+#[macro_use]
+extern crate static_assertions;
+extern crate bare_metal;
+
 pub mod idt;
 pub mod pic;
 

@@ -22,8 +22,9 @@ extern crate static_assertions;
 extern crate bitflags;
 
 // other crates from this workspace
-extern crate bare_metal;
 extern crate acpi;
+extern crate bare_metal;
+extern crate interrupts;
 extern crate multiboot2;
 extern crate spinlock;
 
@@ -41,7 +42,6 @@ macro_rules! halt {
 use bare_metal::*;
 #[macro_use]
 pub mod diagnostics;
-pub mod interrupts;
 pub mod memory;
 pub mod globals;
 pub mod vga;
