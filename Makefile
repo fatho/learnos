@@ -8,7 +8,7 @@ endif
 # Toolset
 
 QEMU := qemu-system-x86_64
-QEMUFLAGS := -serial stdio -smp cores=2 
+QEMUFLAGS := -serial stdio -smp cores=2 -cpu max
 
 LD := ld
 LDFLAGS := -z max-page-size=0x1000 --whole-archive

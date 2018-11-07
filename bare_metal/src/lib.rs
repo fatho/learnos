@@ -4,7 +4,7 @@
 mod align;
 mod addr;
 
-pub mod io;
+pub mod cpu;
 
 pub use self::align::*;
 pub use self::addr::*;

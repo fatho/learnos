@@ -1,4 +1,4 @@
-%include "src/bootcode/boot32.inc"
+%include "src/bootcode/boot.inc"
 
 section .boot32
 align 4
@@ -13,7 +13,7 @@ extern page_tbl_pml4
 extern page_tbl_pdp_low
 extern page_tbl_pdp_high
 extern page_tbl_pd_1
-extern page_tbl_pd_2
+extern page_tbl_pdp_direct
 extern kernel_virtual_base
 
 extern kernel_main
@@ -29,8 +29,8 @@ _start32:
     check_multiboot fail_no_multiboot
     check_cpuid fail_no_cpuid
     check_long_mode fail_no_long_mode
+    check_2mb_pages fail_no_2mb_pages
 
-    ; TODO: check availability of 2 MB pages
     ; TODO: future-proof this by checking for 5th page level
 
     call setup_page_tables
@@ -95,37 +95,34 @@ setup_page_tables:
     clear4 page_tbl_pml4, 1024
     clear4 page_tbl_pdp_low, 1024
     clear4 page_tbl_pd_1, 1024
+    clear4 page_tbl_pdp_direct, 1024
 
     ; PML4[0] -> page_tbl_pdp_low
-    mov   eax, page_tbl_pdp_low
-    or    eax, 0b11
-    mov   DWORD [page_tbl_pml4], eax
+    mov eax, page_tbl_pdp_low
+    or  eax, 0b11
+    mov DWORD [page_tbl_pml4], eax
+    ; PML4[256] -> page_tbl_pdp_direct
+    mov eax, page_tbl_pdp_direct
+    or  eax, 0b11
+    mov DWORD [page_tbl_pml4 + 256 * 8], eax
     ; PML4[510] -> page_tbl_pml4
-    mov   eax, page_tbl_pml4
-    or    eax, 0b11
-    mov   DWORD [page_tbl_pml4 + 510 * 8], eax
+    mov eax, page_tbl_pml4
+    or  eax, 0b11
+    mov DWORD [page_tbl_pml4 + 510 * 8], eax
     ; PML4[511] -> page_tbl_pdp_high
-    mov   eax, page_tbl_pdp_high
-    or    eax, 0b11
-    mov   DWORD [page_tbl_pml4 + 511 * 8], eax
+    mov eax, page_tbl_pdp_high
+    or  eax, 0b11
+    mov DWORD [page_tbl_pml4 + 511 * 8], eax
 
     ; page_tbl_pdp_low[0] -> page_tbl_pd_1
-    mov   eax, page_tbl_pd_1
-    or    eax, 0b11
-    mov   DWORD [page_tbl_pdp_low], eax
-    ; page_tbl_pdp_low[1] -> page_tbl_pd_2
-    mov   eax, page_tbl_pd_2
-    or    eax, 0b11
-    mov   DWORD [page_tbl_pdp_low+8], eax
+    mov eax, page_tbl_pd_1
+    or  eax, 0b11
+    mov DWORD [page_tbl_pdp_low], eax
 
     ; page_tbl_pdp_high[510] -> page_tbl_pd_1
-    mov   eax, page_tbl_pd_1
-    or    eax, 0b11
-    mov   DWORD [page_tbl_pdp_high + 510 * 8], eax
-    ; page_tbl_pdp_high[511] -> page_tbl_pd_2
-    mov   eax, page_tbl_pd_2
-    or    eax, 0b11
-    mov   DWORD [page_tbl_pdp_high + 511 * 8], eax
+    mov eax, page_tbl_pd_1
+    or  eax, 0b11
+    mov DWORD [page_tbl_pdp_high + 510 * 8], eax
 
     ; map 2 MiB pages in 1st PD to first GiB of physical memory
     mov ecx, 512
@@ -136,14 +133,24 @@ setup_page_tables:
         add edi, 4               ; skip higher DWORD of PD entry
         add eax, 2 * 1024 * 1024 ; advance physical address by 2 MiB
         loop .next_pd_1
-    ; map 2 MiB pages in 2nd PD to second GiB of physical memory
+    
+    check_1gb_pages .no_1gb_pages
+    ; map 1 GiB pages in direct mapping
     mov ecx, 512
-    mov edi, page_tbl_pd_2
-    .next_pd_2:
-        stosd                    ; write lower DWORD of PD entry
-        add edi, 4               ; skip higher DWORD of PD entry
-        add eax, 2 * 1024 * 1024 ; advance physical address by 2 MiB
-        loop .next_pd_2
+    mov edi, page_tbl_pdp_direct
+    mov eax, (1 << 7) | 3 ; huge page (7), writable (1), present (0)
+    .next_pdp_direct:
+        stosd                       ; write lower DWORD of PD entry
+        add edi, 4                  ; skip higher DWORD of PD entry
+        add eax, 1024 * 1024 * 1024 ; advance physical address by 1 GiB
+        loop .next_pdp_direct
+    jmp .pdp_direct_done
+    ; as a fallback, map the 1st GB in page_tbl_pdp_direct
+    .no_1gb_pages:
+    mov eax page_tbl_pd_1
+    or  eax, 0b11
+    mov DWORD [page_tbl_pdp_direct], eax
+    .pdp_direct_done:
     ret
 
 
@@ -161,6 +168,7 @@ fail_%1:
 fail no_cpuid
 fail no_multiboot
 fail no_long_mode
+fail no_2mb_pages
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;; UTILITY FUNCTIONS
@@ -200,6 +208,8 @@ msg_no_cpuid:
     db 'CPUID instruction is not available', 0
 msg_no_long_mode:
     db 'Long mode is not available', 0
+msg_no_2mb_pages:
+    db 'Huge pages are not available', 0
 
 GDT64:                           ; Global Descriptor Table (64-bit).
     .Null: equ $ - GDT64         ; The null descriptor.

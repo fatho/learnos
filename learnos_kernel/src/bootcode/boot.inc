@@ -38,6 +38,21 @@
     jz %1
 %endmacro
 
+%macro check_2mb_pages 1
+    ; ensure that 2mb pages are available
+    mov eax, 0x80000001
+    cpuid
+    test edx, 1 << 3
+    jz %1
+%endmacro
+
+%macro check_1gb_pages 1
+    ; ensure that 1gb pages are available
+    mov eax, 0x80000001
+    cpuid
+    test edx, 1 << 26
+    jz %1
+%endmacro
 
 %macro enable_long_mode_feature 0
     ; enable LM (long mode) bit in EFER MSR

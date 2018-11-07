@@ -9,7 +9,7 @@ pub struct DirectMapping {
 }
 
 impl DirectMapping {
-    pub fn new(virtual_base: VirtAddr, physical_base: PhysAddr, size_in_bytes: usize) -> Self {
+    pub const fn new(virtual_base: VirtAddr, physical_base: PhysAddr, size_in_bytes: usize) -> Self {
         DirectMapping {
             virtual_base: virtual_base,
             physical_base: physical_base,
