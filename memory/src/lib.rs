@@ -1,8 +1,12 @@
 #![cfg_attr(not(test), no_std)]
 
+#[macro_use]
+extern crate bitflags;
+
 extern crate bare_metal;
 
-pub mod mapping;
+pub mod paging;
+pub mod physical;
 
 /// Number of trailing zeros in a page aligned address.
 pub const PAGE_ALIGN_BITS: u32 = 12;
