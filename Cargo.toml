@@ -1,3 +1,13 @@
 # Cargo.toml
 [workspace]
-members = ["learnos_kernel"]
+members = [
+    # libraries
+    "acpi",
+    "bare_metal",
+    "kmem",
+    "interrupts",
+    "multiboot2",
+    "spinlock",
+    # binary tying everything together
+    "learnos_kernel",
+]

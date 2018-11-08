@@ -4,15 +4,15 @@
 //! concurrent modification of the same memory location, as there is
 //! only one VGA buffer.
 
-use crate::addr::{PhysAddr, VirtAddr};
-use crate::spin;
+use bare_metal::{PhysAddr, VirtAddr};
+use spinlock;
 use core::fmt;
 
 mod writer;
 pub use self::writer::Writer;
 
 /// Provides a single synchronized access to the console.
-pub static GLOBAL_WRITER: spin::Mutex<Option<Writer>> = spin::Mutex::new(None);
+pub static GLOBAL_WRITER: spinlock::Mutex<Option<Writer>> = spinlock::Mutex::new(None);
 
 /// Intialize the global VGA subsystem.
 pub fn init(vga_base: VirtAddr) {
