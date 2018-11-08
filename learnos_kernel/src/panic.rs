@@ -7,7 +7,7 @@ use core::fmt::{Write};
 use crate::vga;
 #[cfg(not(test))]
 use bare_metal::cpu;
-
+#[cfg(not(test))]
 use crate::mem::layout;
 
 #[cfg(not(test))]

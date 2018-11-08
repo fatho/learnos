@@ -147,7 +147,7 @@ setup_page_tables:
     jmp .pdp_direct_done
     ; as a fallback, map the 1st GB in page_tbl_pdp_direct
     .no_1gb_pages:
-    mov eax page_tbl_pd_1
+    mov eax, page_tbl_pd_1
     or  eax, 0b11
     mov DWORD [page_tbl_pdp_direct], eax
     .pdp_direct_done:
