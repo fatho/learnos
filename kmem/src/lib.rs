@@ -1,7 +1,10 @@
 #![cfg_attr(not(test), no_std)]
+#![feature(asm)]
 
 #[macro_use]
 extern crate bitflags;
+#[macro_use]
+extern crate static_assertions;
 
 extern crate bare_metal;
 

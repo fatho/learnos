@@ -91,6 +91,24 @@ impl PageTableEntry {
     }
 }
 
+
+/// A long-mode page table consisting of 512 page table entries.
+#[repr(C)]
+pub struct PageTable {
+    entries: [PageTableEntry; 512],
+}
+assert_eq_size!(page_table_size; PageTable, [u64; 512]);
+
+impl PageTable {
+    pub fn entry(&self, idx: usize) -> &PageTableEntry {
+        &self.entries[idx]
+    }
+
+    pub fn entry_mut(&mut self, idx: usize) -> &mut PageTableEntry {
+        &mut self.entries[idx]
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;

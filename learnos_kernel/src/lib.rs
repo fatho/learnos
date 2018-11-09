@@ -105,6 +105,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     let _boot_pfa = kmem_alloc::BumpAllocator::new(bootmem_regions);    
     debugln!("[Bootmem] page frame allocator initialized");
 
+    // Setup interrupts
     unsafe {
         {
             let idt = IDT.lock();
@@ -116,6 +117,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
         // we do not want to receive interrupts from the PIC, because
         // we are soon going to enable the APIC.
         interrupts::pic::set_masks(0xFF, 0xFF);
+        // TODO: enable LAPIC
     }
 
     unsafe {
