@@ -12,6 +12,7 @@ crate-type = ["staticlib"]
 [dependencies]
 static_assertions = "0.2.5"
 bitflags = "1.0.0"
+log = "0.4.6"
 
 acpi = { path = "../acpi" }
 bare_metal = { path = "../bare_metal" }

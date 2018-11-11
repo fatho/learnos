@@ -6,13 +6,15 @@
 #![feature(get_type_id)]
 #![feature(const_fn)]
 //#![feature(alloc)]
-#![feature(format_args_nl)] // needed for debugln! macro
+#![feature(format_args_nl)] // needed for debug! macro
 #![feature(extern_crate_item_prelude)]
 #![feature(alloc_error_handler)]
 
 // built-in crates
 #[macro_use]
 extern crate core;
+#[macro_use]
+extern crate log;
 //extern crate alloc;
 
 // crates from crates.io
@@ -64,12 +66,18 @@ assert_eq_size!(ptr_size; usize, u64);
 /// The IDT that is used by the kernel on all cores.
 static IDT: spinlock::Mutex<interrupts::idt::Idt> = spinlock::Mutex::new(interrupts::idt::Idt::new());
 
+static LOGGER: &'static log::Log = &diagnostics::FanOutLogger
+    (diagnostics::SerialLogger, diagnostics::VgaLogger);
+
 /// This is the Rust entry point that is called by the assembly boot code after switching to long mode.
 #[no_mangle]
 pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     vga::init(DIRECT_MAPPING.phys_to_virt(vga::VGA_PHYS_ADDR));
+    log::set_logger(LOGGER)
+        .map(|()| log::set_max_level(log::LevelFilter::Trace))
+        .unwrap();
 
-    debugln!("VGA initialized");
+    debug!("VGA initialized");
 
     // parse multiboot info
     let mb2: &multiboot2::Multiboot2Info = unsafe { &*DIRECT_MAPPING.phys_to_virt(args.multiboot_start).as_ptr() };
@@ -86,7 +94,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
 
     let heap_start_frame = PageFrame::next_above(heap_start);
 
-    debugln!("[Bootmem] first frame = {:p}", heap_start_frame.start_address());
+    debug!("[Bootmem] first frame = {:p}", heap_start_frame.start_address());
 
     // Compute initial allocation regions: all available RAM regions, rounded down to page sizes,
     // and above the important kernel data.
@@ -103,7 +111,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     // Fortunately, we mostly want to allocate page tables (which conveniently are 4KB in size)
     // and metadata for the better allocators (which can be reasonably rounded up to the next 4KB).
     let _boot_pfa = kmem_alloc::BumpAllocator::new(bootmem_regions);    
-    debugln!("[Bootmem] page frame allocator initialized");
+    debug!("[Bootmem] page frame allocator initialized");
 
     // Setup interrupts
     unsafe {
