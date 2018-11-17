@@ -10,8 +10,8 @@ name = "learnos_kernel"
 crate-type = ["staticlib"]
 
 [dependencies]
-static_assertions = "0.2.5"
-bitflags = "1.0.0"
+static_assertions = "0.3.1"
+bitflags = "1.0.4"
 log = "0.4.6"
 
 acpi = { path = "../acpi" }
