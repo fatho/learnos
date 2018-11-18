@@ -13,6 +13,9 @@ extern page_tbl_pml4
 extern page_tbl_pdp_low
 extern page_tbl_pdp_high
 extern page_tbl_pd_1
+extern page_tbl_pd_2
+extern page_tbl_pd_3
+extern page_tbl_pd_4
 extern page_tbl_pdp_direct
 extern kernel_virtual_base
 
@@ -95,6 +98,9 @@ setup_page_tables:
     clear4 page_tbl_pml4, 1024
     clear4 page_tbl_pdp_low, 1024
     clear4 page_tbl_pd_1, 1024
+    clear4 page_tbl_pd_2, 1024
+    clear4 page_tbl_pd_3, 1024
+    clear4 page_tbl_pd_4, 1024
     clear4 page_tbl_pdp_direct, 1024
 
     ; PML4[0] -> page_tbl_pdp_low
@@ -124,7 +130,7 @@ setup_page_tables:
     or  eax, 0b11
     mov DWORD [page_tbl_pdp_high + 510 * 8], eax
 
-    ; map 2 MiB pages in 1st PD to first GiB of physical memory
+    ; map 2 MiB pages in PD 1-4 to first 4 GiB of physical memory
     mov ecx, 512
     mov edi, page_tbl_pd_1
     mov eax, (1 << 7) | 3 ; huge page (7), writable (1), present (0)
@@ -133,6 +139,27 @@ setup_page_tables:
         add edi, 4               ; skip higher DWORD of PD entry
         add eax, 2 * 1024 * 1024 ; advance physical address by 2 MiB
         loop .next_pd_1
+    mov ecx, 512
+    mov edi, page_tbl_pd_2
+    .next_pd_2:
+        stosd                    ; write lower DWORD of PD entry
+        add edi, 4               ; skip higher DWORD of PD entry
+        add eax, 2 * 1024 * 1024 ; advance physical address by 2 MiB
+        loop .next_pd_2
+    mov ecx, 512
+    mov edi, page_tbl_pd_3
+    .next_pd_3:
+        stosd                    ; write lower DWORD of PD entry
+        add edi, 4               ; skip higher DWORD of PD entry
+        add eax, 2 * 1024 * 1024 ; advance physical address by 2 MiB
+        loop .next_pd_3
+    mov ecx, 512
+    mov edi, page_tbl_pd_4
+    .next_pd_4:
+        stosd                    ; write lower DWORD of PD entry
+        add edi, 4               ; skip higher DWORD of PD entry
+        add eax, 2 * 1024 * 1024 ; advance physical address by 2 MiB
+        loop .next_pd_4
     
     check_1gb_pages .no_1gb_pages
     ; map 1 GiB pages in direct mapping
@@ -147,9 +174,18 @@ setup_page_tables:
     jmp .pdp_direct_done
     ; as a fallback, map the 1st GB in page_tbl_pdp_direct
     .no_1gb_pages:
-    mov eax, page_tbl_pd_1
-    or  eax, 0b11
-    mov DWORD [page_tbl_pdp_direct], eax
+        mov eax, page_tbl_pd_1
+        or  eax, 0b11
+        mov DWORD [page_tbl_pdp_direct], eax
+        mov eax, page_tbl_pd_2
+        or  eax, 0b11
+        mov DWORD [page_tbl_pdp_direct + 1 * 8], eax
+        mov eax, page_tbl_pd_3
+        or  eax, 0b11
+        mov DWORD [page_tbl_pdp_direct + 2 * 8], eax
+        mov eax, page_tbl_pd_4
+        or  eax, 0b11
+        mov DWORD [page_tbl_pdp_direct + 3 * 8], eax
     .pdp_direct_done:
     ret
 

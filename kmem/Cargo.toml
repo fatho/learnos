@@ -5,8 +5,8 @@ authors = ["Fabian Thorand <f.thorand@gmail.com>"]
 edition = "2018"
 
 [dependencies]
-bitflags = "1.0.0"
+bitflags = "1.0.4"
 log = "0.4.6"
-static_assertions = "0.2.5"
+static_assertions = "0.3.1"
 
 bare_metal = {path = "../bare_metal"}

@@ -113,19 +113,46 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     let _boot_pfa = kmem_alloc::BumpAllocator::new(bootmem_regions);    
     debug!("[Bootmem] page frame allocator initialized");
 
+    // TODO: setup proper address space
+
     // Setup interrupts
     unsafe {
         {
             let idt = IDT.lock();
             interrupts::idt::load_idt(&*idt);
+            debug!("IDT loaded");
         }
 
         // default mapping of PIC collides with CPU exceptions
         interrupts::pic::remap(0x20, 0x28);
+        debug!("PIC IRQs remapped");
+
         // we do not want to receive interrupts from the PIC, because
         // we are soon going to enable the APIC.
         interrupts::pic::set_masks(0xFF, 0xFF);
-        // TODO: enable LAPIC
+        debug!("PIC IRQs masked");
+
+        if ! interrupts::apic::supported() {
+            panic!("APIC not supported")
+        }
+
+        info!("BSP APIC ID {}", interrupts::apic::local_apic_id());
+
+        if ! interrupts::apic::is_enabled()  {
+            info!("APIC support not yet enabled, enabling now");
+            interrupts::apic::set_enabled(true);
+            assert!(interrupts::apic::is_enabled(), "APIC support could not be enabled");
+        }
+
+        let apic_base_phys = interrupts::apic::base_address();
+        let apic_base_virt = DIRECT_MAPPING.phys_to_virt(apic_base_phys);
+        let mut apic_registers = interrupts::apic::ApicRegisters::new(apic_base_virt.as_mut_ptr());
+
+        info!("APIC base address is {:p}", apic_base_phys);
+
+        apic_registers.set_spurious_interrupt_vector(0xFF, true);
+        
+        info!("APIC enabled");
     }
 
     unsafe {

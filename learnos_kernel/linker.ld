@@ -24,7 +24,10 @@ SECTIONS
         page_tbl_pdp_low = .; . += 4K;   /* 0-2 GiB identity mapping */
         page_tbl_pdp_direct = .; . += 4K;  /* mapping -1.5TB to -1TB virtual to 0B to 512GB physical */
         page_tbl_pdp_high = .; . += 4K;  /* mapping -2GB to 0 physical */
-        page_tbl_pd_1 = .; . += 4K;      /* mapping first physical GiB */
+        page_tbl_pd_1 = .; . += 4K;      /* mapping 1st physical GiB */
+        page_tbl_pd_2 = .; . += 4K;      /* mapping 2nd physical GiB */
+        page_tbl_pd_3 = .; . += 4K;      /* mapping 3rd physical GiB */
+        page_tbl_pd_4 = .; . += 4K;      /* mapping 4th physical GiB */
         /* reserve 8K of stack space */
         stack_start = .;
         . += 8K;
