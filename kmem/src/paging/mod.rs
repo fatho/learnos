@@ -1,3 +1,7 @@
+//! This module provides functionality for manipulating page tables.
+//! 
+//! TODO: deallocate page tables when they become unused
+
 pub mod direct;
 pub mod tables;
 
@@ -65,7 +69,7 @@ pub unsafe fn mmap(vaddr: VirtAddr, paddr: PhysAddr, level: MappingLevel, pfa: &
 
 /// Unmap a virtual address.
 /// The given page frame allocator is used for allocating additional page tables.
-pub unsafe fn unmmap(vaddr: VirtAddr) {
+pub unsafe fn unmmap(_vaddr: VirtAddr) {
     unimplemented!()
 }
 

@@ -2,13 +2,12 @@ OUTPUT_FORMAT(elf64-x86-64)
 ENTRY(_start32)
 
 SECTIONS
-{   
+{
     /* VGA buffer location */
     vga_buffer = 0xB8000;
 
-    /* bootloader code should be loaded at 1M */
-    . = 1M;
-    
+    . = 4K;
+
     .bootcode ALIGN(4K) :
     {   
         KEEP(*(.multiboot2))
@@ -16,6 +15,8 @@ SECTIONS
         *(.boot32.rodata)
     }
 
+    /* This memory is allocated at boot-time, but the structures allocated
+       here should be replaced when the kernel is loaded  */
     .bootmem ALIGN(4K) :
     {
         /* reserve page tables */
@@ -30,7 +31,9 @@ SECTIONS
         stack_end = .;
     }
 
-    /* Kernel starts at this virtual address. Physically, it's put right behind the bootcode */
+    /* Kernel starts at this virtual address.  */
+    /* Physically, it should be loaded at 1M */
+    . = 1M;    
 
     kernel_virtual_base = 0xFFFFFFFF80000000;
     
