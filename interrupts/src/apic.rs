@@ -42,33 +42,63 @@ pub unsafe fn set_enabled(enabled: bool) {
     cpu::write_msr(cpu::MSR_APIC_BASE, apic_msr)
 }
 
-/// Interface to the memory mapped APIC registers.
-pub struct ApicRegisters(*mut u32);
+/// Interface to the local APIC via the memory mapped registers.
+pub struct Apic(*mut u32);
 
-impl ApicRegisters {
+impl Apic {
     pub const SPURIOUS_INTERRUPT_VECTOR_REG: usize = 0xF0;
+    pub const EOI_REG: usize = 0xB0;
 
-    pub fn new(base_addr: *mut u32) -> ApicRegisters {
+    pub fn new(base_addr: *mut u32) -> Apic {
         assert!((base_addr as usize).is_aligned(4096), "APIC register base address not aligned");
-        ApicRegisters(base_addr)
+        Apic(base_addr)
     }
 
-    pub unsafe fn set_spurious_interrupt_vector(&mut self, interrupt_vector: u8, apic_enabled: bool) {
+    /// Software-enable or disable the local APIC.
+    pub unsafe fn set_software_enable(&mut self, enabled: bool) {
         let mut value = self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG);
-        value &= ! 0x1FF;
-        value |= interrupt_vector as u32;
-        if apic_enabled {
+         if enabled {
             value |= 0x100;
+        } else {
+            value &= ! 0x100;
         }
+        self.write_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG, value)
+    }
+
+    /// Return the current software-enabled state of the APIC.
+    pub unsafe fn software_enabled(&self) -> bool {
+        self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG) & 0x100 != 0
+    }
+
+
+    /// Set the interrupt vector where spurious interrupts are delivered to.
+    pub unsafe fn set_spurious_interrupt_vector(&mut self, interrupt_vector: u8) {
+        let mut value = self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG);
+        value &= ! 0xFF;
+        value |= interrupt_vector as u32;
         self.write_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG, value);
     }
 
+    /// Get the interrupt vector where spurious interrupts are delivered to.
+    pub unsafe fn spurious_interrupt_vector(&mut self) -> u8 {
+        (self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG) & 0xFF) as u8
+    }
+
+
+    /// Signal the end of the current interrupt handler by writing to the EOI register.
+    pub unsafe fn signal_eoi(&mut self) {
+        self.write_reg(Self::EOI_REG, 0);
+    }
+
+
+    /// Write to the given APIC register. The index must be 16 byte aligned, as mandated by the APIC specification.
     pub unsafe fn write_reg(&mut self, reg_index: usize, reg_value: u32) {
         assert!(reg_index.is_aligned(16), "misaligned APIC register index");
         let reg_addr = self.0.add(reg_index >> 4);
         reg_addr.write_volatile(reg_value);
     }
 
+    /// Read the given APIC register. The index must be 16 byte aligned, as mandated by the APIC specification.
     pub unsafe fn read_reg(&self, reg_index: usize) -> u32 {
         assert!(reg_index.is_aligned(16), "misaligned APIC register index");
         let reg_addr = self.0.add(reg_index >> 2);

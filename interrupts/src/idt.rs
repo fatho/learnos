@@ -107,7 +107,7 @@ impl IdtEntry {
     }
 
     /// Return the assigned handler, if it is not null.
-    pub unsafe fn handler(&self) -> Option<unsafe extern "C" fn() -> ()> {
+    pub unsafe fn handler(&self) -> Option<unsafe extern "C" fn() -> !> {
         let addr = (self.offset_low as usize) |
                 ((self.offset_middle as usize) << 16) |
                 ((self.offset_high as usize) << 32);
@@ -120,7 +120,7 @@ impl IdtEntry {
     }
 
     /// Set the handler.
-    pub unsafe fn set_handler(&mut self, handler: Option<unsafe extern "C" fn() -> ()>) {
+    pub unsafe fn set_handler(&mut self, handler: Option<unsafe extern "C" fn() -> !>) {
         let addr: usize = mem::transmute(handler);
         self.offset_low = (addr & 0xFFFF) as u16;
         self.offset_middle = ((addr >> 16) & 0xFFFF) as u16;
