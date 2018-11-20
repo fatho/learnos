@@ -25,58 +25,121 @@ pub unsafe fn disable() {
     asm!("cli" : : : : "intel", "volatile")
 }
 
+
+/// Stack-frame layout upon entering an interrupt handler.
+#[derive(Debug)]
+#[repr(C)]
+pub struct InterruptFrame {
+    /// Saved instruction pointer, the interrupt handler jumps back to that location upon executing IRETQ.
+    pub rip: usize,
+    /// Saved code segment of the caller.
+    pub cs: usize,
+    /// Saved CPU flags.
+    pub rflags: usize,
+    /// Saved stack pointer from the calling stack frame.
+    pub rsp: usize,
+    /// Saved stack segement of the caller.
+    pub ss: usize,
+}
+
 #[macro_export]
 macro_rules! push_scratch_registers {
     () => {{
-        asm!("push rax" : : : : "intel");
-        asm!("push rdi" : : : : "intel");
-        asm!("push rsi" : : : : "intel");
-        asm!("push rdx" : : : : "intel");
-        asm!("push rcx" : : : : "intel");
-        asm!("push r8"  : : : : "intel");
-        asm!("push r9"  : : : : "intel");
-        asm!("push r10" : : : : "intel");
-        asm!("push r11" : : : : "intel");
+        asm!("push rax" : : : : "intel", "volatile");
+        asm!("push rdi" : : : : "intel", "volatile");
+        asm!("push rsi" : : : : "intel", "volatile");
+        asm!("push rdx" : : : : "intel", "volatile");
+        asm!("push rcx" : : : : "intel", "volatile");
+        asm!("push r8"  : : : : "intel", "volatile");
+        asm!("push r9"  : : : : "intel", "volatile");
+        asm!("push r10" : : : : "intel", "volatile");
+        asm!("push r11" : : : : "intel", "volatile");
     }};
 }
 
 #[macro_export]
 macro_rules! pop_scratch_registers {
     () => {{
-        asm!("push rax" : : : : "intel");
-        asm!("push rdi" : : : : "intel");
-        asm!("push rsi" : : : : "intel");
-        asm!("push rdx" : : : : "intel");
-        asm!("push rcx" : : : : "intel");
-        asm!("push r8"  : : : : "intel");
-        asm!("push r9"  : : : : "intel");
-        asm!("push r10" : : : : "intel");
-        asm!("push r11" : : : : "intel");
+        asm!("pop r11" : : : : "intel", "volatile");
+        asm!("pop r10" : : : : "intel", "volatile");
+        asm!("pop r9"  : : : : "intel", "volatile");
+        asm!("pop r8"  : : : : "intel", "volatile");
+        asm!("pop rcx" : : : : "intel", "volatile");
+        asm!("pop rdx" : : : : "intel", "volatile");
+        asm!("pop rsi" : : : : "intel", "volatile");
+        asm!("pop rdi" : : : : "intel", "volatile");
+        asm!("pop rax" : : : : "intel", "volatile");
     }};
 }
 
+// TODO: reduce code duplication in interrupt handler macros
+
+// TODO: provide interrupt handlers with access to return addres etc, so that they can jump somewhere else if desired
+
+/// Generates a raw interrupt handler
 #[macro_export]
 macro_rules! interrupt_handler_raw {
     (fn $name:ident () $body:tt) => {
         #[naked]
         unsafe extern "C" fn $name() -> ! {
-            // stack frame is 16 byte aligned when interrupt handler is called by CPU
-            push_scratch_registers!();
-            // after pushing 9 registers, align stack to 16 bytes again (stack grows downwards)
-            asm!("sub rsp, 8" : : : : "intel");
+            // clear direction bit, will be restored by iretq
+            asm!("cld");
+            
             {
                 $body
             }
+
             // TODO: sigal EOI to APIC
 
             // This could be unreachable when the interrupt handler panics
             #[allow(unreachable_code)]
             {
-                asm!("add rsp, 8" : : : : "intel"); // undo alignment
-                pop_scratch_registers!();
-
                 asm!("iretq" : : : : "intel", "volatile");
                 unreachable!()
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! interrupt_handler {
+    (fn $name:ident ($frame:ident : $frame_type:ty) $body:tt) => {
+        interrupt_handler_raw! {
+            fn $name () {
+                extern "C" fn work($frame: $frame_type) {
+                    $body
+                }
+                assert_eq_size!($frame_type, usize);
+                push_scratch_registers!();
+                asm!("sub rsp, 8 // align to 16 bytes (we pushed 9 * 8)
+                      lea rdi, [rsp+80]
+                      call $0
+                      add rsp, 8 // undo alignment
+                     " : : "i"(work as extern "C" fn($frame_type)) : : "intel", "volatile");
+                pop_scratch_registers!();
+            }
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! exception_handler_with_code {
+    (fn $name:ident ($frame:ident : $frame_type:ty, $err_code:ident : u64) $body:tt) => {
+        interrupt_handler_raw! {
+            fn $name () {
+                extern "C" fn work($frame: $frame_type, $err_code : u64) {
+                    $body
+                }
+
+                assert_eq_size!($frame_type, usize);
+                push_scratch_registers!();
+                asm!("lea rdi, [rsp+80]
+                      mov rsi, [rsp+72]
+                      call $0
+                     " : : "i"(work as extern "C" fn($frame_type, u64)) : : "intel", "volatile");
+                pop_scratch_registers!();
+                // pop error code
+                asm!("add rsp, 8" : : : : "intel", "volatile");
             }
         }
     };

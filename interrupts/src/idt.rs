@@ -1,6 +1,8 @@
 use core::mem;
 use core::ops;
 
+use bare_metal::segments::{Ring, Selector};
+
 /// Load an IDT for the current CPU.
 pub unsafe fn load_idt(idt: &Idt) {
     let idtr = Idtr {
@@ -29,7 +31,7 @@ assert_eq_size!(idt_size; Idt, [u64; 512]);
 impl Idt {
     pub const fn new() -> Idt {
         Idt {
-            entries: [IdtEntry::new(); 256]
+            entries: [IdtEntry::empty(); 256]
         }
     }
 }
@@ -68,6 +70,8 @@ assert_eq_size!(idt_entry_size; IdtEntry, [u64; 2]);
 #[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub struct GateType(u8);
 
+pub type Handler = unsafe extern "C" fn() -> !;
+
 impl GateType {
     pub const CALL_GATE: GateType = GateType(0x0C);
     pub const INTERRUPT_GATE: GateType = GateType(0x0E);
@@ -79,13 +83,23 @@ impl IdtEntry {
     const TYPE_MASK: u8 = 0b0000_1111;
     const PRESENT_MASK: u8 = 0b1000_0000;
 
-    /// Create a new empty IDT entry.
-    pub const fn new() -> Self {
+    pub unsafe fn new(gate_type: GateType, selector: Selector, handler: Option<Handler>, dpl: Ring, present: bool) -> IdtEntry {
+        let mut e = Self::empty();
+        e.set_gate_type(gate_type);
+        e.set_selector(selector);
+        e.set_handler(handler);
+        e.set_descriptor_privilege(dpl);
+        e.set_present(present);
+        e
+    }
+
+    /// Create a new non-present, DPL 0 and empty IDT entry with the invalid selector 0.
+    pub const fn empty() -> IdtEntry {
         IdtEntry {
             offset_low: 0,
             selector: 0,
             reserved_ist: 0,
-            type_attr: 0,
+            type_attr: GateType::INTERRUPT_GATE.0,
             offset_middle: 0,
             offset_high: 0,
             reserved: 0,
@@ -107,7 +121,7 @@ impl IdtEntry {
     }
 
     /// Return the assigned handler, if it is not null.
-    pub unsafe fn handler(&self) -> Option<unsafe extern "C" fn() -> !> {
+    pub unsafe fn handler(&self) -> Option<Handler> {
         let addr = (self.offset_low as usize) |
                 ((self.offset_middle as usize) << 16) |
                 ((self.offset_high as usize) << 32);
@@ -120,7 +134,7 @@ impl IdtEntry {
     }
 
     /// Set the handler.
-    pub unsafe fn set_handler(&mut self, handler: Option<unsafe extern "C" fn() -> !>) {
+    pub unsafe fn set_handler(&mut self, handler: Option<Handler>) {
         let addr: usize = mem::transmute(handler);
         self.offset_low = (addr & 0xFFFF) as u16;
         self.offset_middle = ((addr >> 16) & 0xFFFF) as u16;
@@ -128,12 +142,12 @@ impl IdtEntry {
     }
 
     /// Offset in the GDT that determines the segment used for this gate.
-    pub fn selector(&self) -> u16 {
-        self.selector
+    pub fn selector(&self) -> Selector {
+        Selector(self.selector)
     }
 
-    pub fn set_selector(&mut self, selector: u16) {
-        self.selector = selector
+    pub fn set_selector(&mut self, selector: Selector) {
+        self.selector = selector.0
     }
 
     pub fn gate_type(&self) -> GateType {
@@ -145,12 +159,63 @@ impl IdtEntry {
     }
 
     /// The privilege level required to call this gate.
-    pub fn descriptor_privilege(&self) -> u8 {
-        (self.type_attr & Self::DPL_MASK) >> 5
+    pub fn descriptor_privilege(&self) -> Ring {
+        // we can safely unwrap because we only ever store a valid ring
+        Ring::new((self.type_attr & Self::DPL_MASK) >> 5).unwrap()
     }
 
-    pub fn set_descriptor_privilege(&mut self, descriptor_privilege: u8) {
-        self.type_attr = (self.type_attr & !Self::DPL_MASK) | ((descriptor_privilege << 5) & Self::DPL_MASK)
+    pub fn set_descriptor_privilege(&mut self, descriptor_privilege: Ring) {
+        self.type_attr = (self.type_attr & !Self::DPL_MASK) | ((descriptor_privilege.number() << 5) & Self::DPL_MASK)
     }
     // TODO: IST field
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn idt_entry_accessors_roundtrip() {
+        let mut e = IdtEntry::empty();
+        unsafe {
+            e.set_handler(Some(test_handler));
+            assert_eq!(e.handler(), Some(test_handler as Handler));
+            e.set_handler(None);
+            assert_eq!(e.handler(), None);
+        }
+
+        e.set_descriptor_privilege(Ring::RING3);
+        e.set_gate_type(GateType::CALL_GATE);
+        e.set_selector(Selector(0xDEAD));
+        assert_eq!(e.descriptor_privilege(), Ring::RING3);
+        assert_eq!(e.gate_type(), GateType::CALL_GATE);
+        assert_eq!(e.selector(), Selector(0xDEAD));
+    }
+
+    #[test]
+    fn empty_idt_entry_correctly_set_up() {
+        let e = IdtEntry::empty();
+        unsafe {
+            assert_eq!(e.handler(), None);
+        }
+        assert_eq!(e.descriptor_privilege(), Ring::RING0);
+        assert_eq!(e.gate_type(), GateType::INTERRUPT_GATE);
+        assert_eq!(e.selector(), Selector(0));
+    }
+
+    #[test]
+    fn new_idt_entry_correctly_set_up() {
+        unsafe {
+            let e = IdtEntry::new(GateType::TRAP_GATE, Selector(32), Some(test_handler), Ring::RING2, true);
+            assert_eq!(e.handler(), Some(test_handler as Handler));
+            assert_eq!(e.selector(), Selector(32));
+            assert_eq!(e.descriptor_privilege(), Ring::RING2);
+            assert_eq!(e.gate_type(), GateType::TRAP_GATE);
+            assert!(e.present());
+        }
+    }
+
+    unsafe extern "C" fn test_handler() -> ! {
+        panic!("You should not have come!")
+    }
 }

@@ -9,6 +9,8 @@
 #![feature(format_args_nl)] // needed for debug! macro
 #![feature(extern_crate_item_prelude)]
 #![feature(alloc_error_handler)]
+#![feature(core_intrinsics)]
+#![feature(abi_x86_interrupt)]
 
 // built-in crates
 #[macro_use]
@@ -37,6 +39,8 @@ use core::iter;
 
 use acpi::AcpiTable;
 use bare_metal::*;
+use bare_metal::segments::Ring;
+use interrupts::idt::{IdtEntry, Idt};
 use kmem::physical::alloc as kmem_alloc;
 use kmem::physical::{PageFrameRegion, PageFrame};
 
@@ -66,10 +70,18 @@ assert_eq_size!(ptr_size; usize, u64);
 // static PFA: spinlock::Mutex<kmem_alloc::PageFrameAllocator>
 
 /// The IDT that is used by the kernel on all cores.
-static IDT: spinlock::Mutex<interrupts::idt::Idt> = spinlock::Mutex::new(interrupts::idt::Idt::new());
+static IDT: spinlock::Mutex<Idt> = spinlock::Mutex::new(Idt::new());
 
 static LOGGER: &'static log::Log = &diagnostics::FanOutLogger
     (diagnostics::SerialLogger, diagnostics::VgaLogger);
+
+mod selectors {
+    use bare_metal::segments::Selector;
+
+    pub const KERNEL_CODE: Selector = Selector(8);
+    #[allow(dead_code)]
+    pub const KERNEL_DATA: Selector = Selector(16);
+}
 
 /// This is the Rust entry point that is called by the assembly boot code after switching to long mode.
 #[no_mangle]
@@ -135,16 +147,21 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
 
     // TODO: setup proper address space
 
+    // TODO: setup proper GDT
+
     // Setup interrupts
     unsafe {
         {
             let mut idt = IDT.lock();
-            idt[0].set_handler(Some(div_by_zero_handler));
-            idt[0].set_present(true);
+            let intgate = |handler| IdtEntry::new(interrupts::idt::GateType::INTERRUPT_GATE, selectors::KERNEL_CODE, Some(handler), Ring::RING0, true);
+            idt[0] = intgate(div_by_zero_handler);
+            idt[8] = intgate(df_handler);
+            idt[13] = intgate(gpf_handler);
+            idt[14] = intgate(pf_handler);
             for i in 32..=255 {
-                idt[i].set_handler(Some(null_handler));
-                idt[i].set_present(true);
+                idt[i] = intgate(null_handler);
             }
+            idt[32] = intgate(callable_int);
             interrupts::idt::load_idt(&*idt);
             debug!("IDT loaded");
         }
@@ -186,6 +203,12 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
         interrupts::enable();
     }
 
+    let bla = 0x1_00000000 as *const u32;
+    unsafe {
+        let val = *bla;
+        info!("IMPORTANT: {}", val);
+    }
+
     unsafe {
         cpu::hang()
     }
@@ -198,18 +221,56 @@ unsafe fn find_acpi_rsdp() -> Option<&'static acpi::Rsdp> {
     find_phys(0xE0000, 0xFFFFF).or(find_phys(0, 1024))
 }
 
-interrupt_handler_raw! {
-    fn pf_handler() {
-        panic!("Page fault");
+#[naked]
+fn retpoline() {
+    info!("retpolined");
+    unsafe {
+        let ret: u64;
+        asm!("int 32" : "={rax}"(ret) : : : "intel");
+        info!("int 32 returned {}", ret);
+        cpu::hang();
     }
 }
 
-interrupt_handler_raw! {
-    fn div_by_zero_handler() {
+
+exception_handler_with_code! {
+    fn df_handler(_frame: &interrupts::InterruptFrame, error_code: u64) {
+        panic!("Double fault: {}", error_code);
+    }
+}
+
+exception_handler_with_code! {
+    fn pf_handler(stack_frame: &mut interrupts::InterruptFrame, error_code: u64) {
+        let addr: usize;
+        unsafe {
+            asm!("mov $0, cr2" : "=r"(addr) : : : "intel");
+        }
+        error!("Page fault: {:05b} - {:p}\n{:X?}", error_code, VirtAddr(addr), stack_frame);
+        stack_frame.rip = retpoline as usize;
+    }
+}
+
+exception_handler_with_code! {
+    fn gpf_handler(stack_frame: &interrupts::InterruptFrame, error_code: u64) {
+        panic!("Protection fault: {:32b}\n{:X?}", error_code, stack_frame);
+    }
+}
+
+interrupt_handler! {
+    fn div_by_zero_handler(_frame: &interrupts::InterruptFrame) {
         panic!("division by zero");
     }
 }
 
 interrupt_handler_raw! {
     fn null_handler() {}
+}
+
+interrupt_handler_raw! {
+    fn callable_int() {
+        push_scratch_registers!();
+        debug!("callable interrupt called");
+        pop_scratch_registers!();
+        asm!("mov rax, 42" : : : : "intel");
+    }
 }

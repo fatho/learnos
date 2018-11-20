@@ -56,7 +56,7 @@ _start32:
 bits 64
 kernel_main_trampoline:
     ; Set data segments (didn't seem to be necessary in QEMU though)
-    mov ax, GDT64.Data
+    mov ax, gdt_data.kernel_data
     mov ds, ax
     mov es, ax
     mov fs, ax
@@ -247,32 +247,6 @@ msg_no_long_mode:
 msg_no_2mb_pages:
     db 'Huge pages are not available', 0
 
-GDT64:                           ; Global Descriptor Table (64-bit).
-    .Null: equ $ - GDT64         ; The null descriptor.
-    dw 0xFFFF                    ; Limit (low).
-    dw 0                         ; Base (low).
-    db 0                         ; Base (middle)
-    db 0                         ; Access.
-    db 1                         ; Granularity.
-    db 0                         ; Base (high).
-    .Code: equ $ - GDT64         ; The code descriptor.
-    dw 0                         ; Limit (low).
-    dw 0                         ; Base (low).
-    db 0                         ; Base (middle)
-    db 10011010b                 ; Access. Pr=1, Prvl=0, 1, Ex=1, DC=0, RW=1, Ac=0
-    db 10101111b                 ; Granularity, 64 bits flag, limit19:16.
-    db 0                         ; Base (high).
-    .Data: equ $ - GDT64         ; The data descriptor.
-    dw 0                         ; Limit (low).
-    dw 0                         ; Base (low).
-    db 0                         ; Base (middle)
-    db 10010010b                 ; Access (read/write).
-    db 00000000b                 ; Granularity.
-    db 0                         ; Base (high).
-    .Pointer:                    ; The GDT-pointer.
-    dw $ - GDT64 - 1             ; Limit.
-    dq GDT64                     ; Base.
-
 ; see section 4.8.1, page 88, of AMD64 Architecture Programmer's Manual, Volume 2 System Programming
 gdt_data:
     .null: equ $ - gdt_data
@@ -284,12 +258,6 @@ gdt_data:
     .kernel_data: equ $ - gdt_data
         dd 0x0
         dd 0x00209200
-    .user_code: equ $ - gdt_data
-        dd 0x0
-        dd 0x0020F800
-    .user_data: equ $ - gdt_data
-        dd 0x0
-        dd 0x0020F200
     .pointer:
         dw $ - gdt_data - 1
         dq gdt_data
