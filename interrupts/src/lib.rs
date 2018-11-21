@@ -16,7 +16,7 @@ pub mod apic;
 /// Enable interrupts on the current CPU.
 #[inline]
 pub unsafe fn enable() {
-    asm!("sti" : : : : "intel", "volatile")
+    asm!("sti\nnop" : : : : "intel", "volatile")
 }
 
 /// Disable interrupts on the current CPU.
@@ -88,8 +88,6 @@ macro_rules! interrupt_handler_raw {
             {
                 $body
             }
-
-            // TODO: sigal EOI to APIC
 
             // This could be unreachable when the interrupt handler panics
             #[allow(unreachable_code)]

@@ -41,6 +41,7 @@ use acpi::AcpiTable;
 use bare_metal::*;
 use bare_metal::segments::Ring;
 use interrupts::idt::{IdtEntry, Idt};
+use interrupts::apic::{Apic, LvtTimer, TimerDivisor};
 use kmem::physical::alloc as kmem_alloc;
 use kmem::physical::{PageFrameRegion, PageFrame};
 
@@ -74,6 +75,8 @@ static IDT: spinlock::Mutex<Idt> = spinlock::Mutex::new(Idt::new());
 
 static LOGGER: &'static log::Log = &diagnostics::FanOutLogger
     (diagnostics::SerialLogger, diagnostics::VgaLogger);
+
+static APIC: Apic = Apic::new(core::ptr::null_mut());
 
 mod selectors {
     use bare_metal::segments::Selector;
@@ -161,7 +164,8 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
             for i in 32..=255 {
                 idt[i] = intgate(null_handler);
             }
-            idt[32] = intgate(callable_int);
+            idt[32] = intgate(test_timer);
+            idt[33] = intgate(callable_int);
             interrupts::idt::load_idt(&*idt);
             debug!("IDT loaded");
         }
@@ -189,18 +193,30 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
 
         let apic_base_phys = interrupts::apic::base_address();
         let apic_base_virt = DIRECT_MAPPING.phys_to_virt(apic_base_phys);
-        let mut apic = interrupts::apic::Apic::new(apic_base_virt.as_mut_ptr());
+        APIC.set_base_address(apic_base_virt.as_mut_ptr());
 
         info!("APIC base address is {:p}", apic_base_phys);
 
-        apic.set_spurious_interrupt_vector(0xFF);
-        apic.set_software_enable(true);
+        APIC.set_spurious_interrupt_vector(0xFF);
+        APIC.set_software_enable(true);
+        APIC.set_task_priority(0);
         
         info!("APIC enabled");
 
         // TODO: configure IO APIC
 
+
         interrupts::enable();
+
+        // test timer
+        APIC.set_timer_divisor(TimerDivisor::Divisor16);
+        APIC.set_lvt_timer(LvtTimer::periodic(32));
+        APIC.set_timer_initial_count(1024);
+
+        asm!("int 33" : : : "rax" : "intel", "volatile");
+
+        debug!("Timer: {:x?} {:x?} {:x?} {:x?}", APIC.timer_divisor(), APIC.timer_initial_count(), APIC.timer_current_count(), APIC.lvt_timer());
+        debug!("APIC error status: {:x}", APIC.error_status());
     }
 
     let bla = 0x1_00000000 as *const u32;
@@ -226,8 +242,8 @@ fn retpoline() {
     info!("retpolined");
     unsafe {
         let ret: u64;
-        asm!("int 32" : "={rax}"(ret) : : : "intel");
-        info!("int 32 returned {}", ret);
+        asm!("int 33" : "={rax}"(ret) : : : "intel");
+        info!("int 33 returned {}", ret);
         cpu::hang();
     }
 }
@@ -235,6 +251,7 @@ fn retpoline() {
 
 exception_handler_with_code! {
     fn df_handler(_frame: &interrupts::InterruptFrame, error_code: u64) {
+        unsafe { APIC.signal_eoi(); }
         panic!("Double fault: {}", error_code);
     }
 }
@@ -247,29 +264,42 @@ exception_handler_with_code! {
         }
         error!("Page fault: {:05b} - {:p}\n{:X?}", error_code, VirtAddr(addr), stack_frame);
         stack_frame.rip = retpoline as usize;
+        unsafe { APIC.signal_eoi(); }
     }
 }
 
 exception_handler_with_code! {
     fn gpf_handler(stack_frame: &interrupts::InterruptFrame, error_code: u64) {
+        unsafe { APIC.signal_eoi(); }
         panic!("Protection fault: {:32b}\n{:X?}", error_code, stack_frame);
     }
 }
 
 interrupt_handler! {
     fn div_by_zero_handler(_frame: &interrupts::InterruptFrame) {
+        unsafe { APIC.signal_eoi(); }
         panic!("division by zero");
     }
 }
 
+interrupt_handler! {
+    fn test_timer(_frame: &interrupts::InterruptFrame) {
+        info!("timer");
+        unsafe { APIC.signal_eoi(); }
+    }
+}
+
 interrupt_handler_raw! {
-    fn null_handler() {}
+    fn null_handler() {
+        APIC.signal_eoi();
+    }
 }
 
 interrupt_handler_raw! {
     fn callable_int() {
         push_scratch_registers!();
         debug!("callable interrupt called");
+        APIC.signal_eoi();
         pop_scratch_registers!();
         asm!("mov rax, 42" : : : : "intel");
     }
