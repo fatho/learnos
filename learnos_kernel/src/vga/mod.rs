@@ -5,14 +5,14 @@
 //! only one VGA buffer.
 
 use bare_metal::{PhysAddr, VirtAddr};
-use spinlock;
+use spin;
 use core::fmt;
 
 mod writer;
 pub use self::writer::Writer;
 
 /// Provides a single synchronized access to the console.
-pub static GLOBAL_WRITER: spinlock::Mutex<Option<Writer>> = spinlock::Mutex::new(None);
+pub static GLOBAL_WRITER: spin::Mutex<Option<Writer>> = spin::Mutex::new(None);
 
 /// Intialize the global VGA subsystem.
 pub fn init(vga_base: VirtAddr) {
@@ -137,6 +137,9 @@ impl VgaChar {
 pub struct VgaMem {
     buffer: *mut u16
 }
+
+/// One thread at a time may access VGA memory.
+unsafe impl Send for VgaMem {}
 
 impl VgaMem {
     /// Create a new wrapper for the VGA buffer. This is unsafe because it allows the

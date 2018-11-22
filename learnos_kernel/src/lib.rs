@@ -17,6 +17,7 @@
 extern crate core;
 #[macro_use]
 extern crate log;
+extern crate spin;
 //extern crate alloc;
 
 // crates from crates.io
@@ -32,7 +33,6 @@ extern crate bare_metal;
 extern crate interrupts;
 extern crate kmem;
 extern crate multiboot2;
-extern crate spinlock;
 
 use core::cmp;
 use core::iter;
@@ -68,10 +68,8 @@ pub struct KernelArgs {
 // For now, this kernel is 64 bit only. Ensure that `usize` has the right size.
 assert_eq_size!(ptr_size; usize, u64);
 
-// static PFA: spinlock::Mutex<kmem_alloc::PageFrameAllocator>
-
 /// The IDT that is used by the kernel on all cores.
-static IDT: spinlock::Mutex<Idt> = spinlock::Mutex::new(Idt::new());
+static IDT: spin::Mutex<Idt> = spin::Mutex::new(Idt::new());
 
 static LOGGER: &'static log::Log = &diagnostics::FanOutLogger
     (diagnostics::SerialLogger, diagnostics::VgaLogger);

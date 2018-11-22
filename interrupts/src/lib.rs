@@ -154,5 +154,3 @@ macro_rules! interrupt_handler_wrapper {
         wrapper
     }};
 }
-
-// TODO: write macro for interrupts with error codes
