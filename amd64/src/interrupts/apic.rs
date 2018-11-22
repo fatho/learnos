@@ -1,3 +1,4 @@
+use crate::util::Bits;
 use crate::cpu;
 use crate::{Alignable, PhysAddr};
 
@@ -76,31 +77,26 @@ impl ApicRegisters {
     /// Software-enable or disable the local APIC.
     pub unsafe fn set_software_enable(&self, enabled: bool) {
         let mut value = self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG);
-         if enabled {
-            value |= 0x100;
-        } else {
-            value &= ! 0x100;
-        }
+        value.set_bit(8, enabled);
         self.write_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG, value)
     }
 
     /// Return the current software-enabled state of the APIC.
     pub unsafe fn software_enabled(&self) -> bool {
-        self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG) & 0x100 != 0
+        self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG).get_bit(8)
     }
 
 
     /// Set the interrupt vector where spurious interrupts are delivered to.
     pub unsafe fn set_spurious_interrupt_vector(&self, interrupt_vector: u8) {
         let mut value = self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG);
-        value &= ! 0xFF;
-        value |= interrupt_vector as u32;
+        value.set_bits(0..=7, interrupt_vector as u32);
         self.write_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG, value);
     }
 
     /// Get the interrupt vector where spurious interrupts are delivered to.
     pub unsafe fn spurious_interrupt_vector(&self) -> u8 {
-        (self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG) & 0xFF) as u8
+        self.read_reg(Self::SPURIOUS_INTERRUPT_VECTOR_REG).get_bits(0..=7) as u8
     }
 
 
@@ -123,18 +119,18 @@ impl ApicRegisters {
 
     #[inline(always)]
     pub unsafe fn set_timer_divisor(&self, divisor: TimerDivisor) {
-        let divisor_hi = ((divisor as u32) & 0b100) << 1;
-        let divisor_lo = (divisor as u32) & 0b011;
-        let divisor_old = self.read_reg(Self::DIVISOR_CONFIG_REG);
-        let divisor_new = (divisor_old & !0b1111) | divisor_lo | divisor_hi;
-        self.write_reg(Self::DIVISOR_CONFIG_REG, divisor_new)
+        let mut value = self.read_reg(Self::DIVISOR_CONFIG_REG);
+        let divisor_bits = divisor as u32;
+        value.set_bit(3, divisor_bits.get_bit(2));
+        value.set_bits(0..=1, divisor_bits.get_bits(0..=1));
+        self.write_reg(Self::DIVISOR_CONFIG_REG, value)
     }
 
     pub unsafe fn timer_divisor(&self) -> TimerDivisor {
         let divisor_config = self.read_reg(Self::DIVISOR_CONFIG_REG);
-        let divisor_hi = (divisor_config & 0b1000) >> 1;
-        let divisor_lo = divisor_config & 0b011;
-        TimerDivisor::parse((divisor_hi | divisor_lo) as u8).unwrap()
+        let mut value = divisor_config.get_bits(0..=1);
+        value.set_bit(2, divisor_config.get_bit(3));
+        TimerDivisor::parse(value as u8).unwrap()
     }
 
     #[inline(always)]
@@ -156,9 +152,9 @@ impl ApicRegisters {
     }
 
     pub unsafe fn set_task_priority(&self, priority: u8) {
-        let old = self.read_reg(Self::TASK_PRIORITY_REG);
-        let new = (old & ! 0xFF) | (priority as u32);
-        self.write_reg(Self::TASK_PRIORITY_REG, new);
+        let mut value = self.read_reg(Self::TASK_PRIORITY_REG);
+        value.set_bits(0..=7, priority as u32);
+        self.write_reg(Self::TASK_PRIORITY_REG, value);
     }
 
     /// Write to the given APIC register. The index must be 16 byte aligned, as mandated by the APIC specification.
@@ -229,6 +225,13 @@ impl TimerMode {
     }
 }
 
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
+#[repr(u32)]
+pub enum DeliveryStatus {
+    Idle = 0,
+    SendPending = 1
+}
+
 impl LvtTimer {
     pub fn disabled() -> LvtTimer {
         LvtTimer(0x0001_0000)
@@ -251,35 +254,36 @@ impl LvtTimer {
     }
 
     pub fn set_vector(&mut self, vec: u8) {
-        self.0 &= ! 0xFF;
-        self.0 |= vec as u32;
+        self.0.set_bits(0..=7, vec as u32);
     }
 
     pub fn vector(&self) -> u8 {
-        (self.0 & 0xFF) as u8
+        self.0.get_bits(0..=7) as u8
     }
 
     pub fn set_masked(&mut self, masked: bool) {
-        if masked {
-            self.0 |= 1 << 16;
-        } else {
-            self.0 &= !(1 << 16);
-        }
+        self.0.set_bit(16, masked);
     }
 
     pub fn masked(&self) -> bool {
-        self.0 & (1 << 16) != 0
+        self.0.get_bit(16)
     }
 
     pub fn set_timer_mode(&mut self, mode: TimerMode) {
-        self.0 = (self.0 & !(0b11 << 17)) | ((mode as u32) << 17);
+        self.0.set_bits(17..=18, mode as u32)
     }
 
     pub fn timer_mode(&self) -> TimerMode {
-        TimerMode::parse((self.0 & (0b11 << 17)) >> 17).unwrap()
+        TimerMode::parse(self.0.get_bits(17..=18)).unwrap()
     }
 
-    // TODO: implement delivery status getter
+    pub fn delivery_status(&self) -> DeliveryStatus {
+        if self.0.get_bit(12) {
+            DeliveryStatus::Idle
+        } else {
+            DeliveryStatus::SendPending
+        }
+    }
 }
 
 #[cfg(test)]

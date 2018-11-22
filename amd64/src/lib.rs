@@ -12,6 +12,7 @@ mod addr;
 pub mod cpu;
 pub mod segments;
 pub mod interrupts;
+pub mod util;
 
 pub use self::align::*;
 pub use self::addr::*;
