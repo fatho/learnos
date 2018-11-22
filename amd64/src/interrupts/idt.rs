@@ -1,7 +1,7 @@
 use core::mem;
 use core::ops;
 
-use bare_metal::segments::{Ring, Selector};
+use crate::segments::{Ring, Selector};
 
 /// Load an IDT for the current CPU.
 pub unsafe fn load_idt(idt: &Idt) {

@@ -1,4 +1,4 @@
-use bare_metal::{PhysAddr, VirtAddr};
+use amd64::{PhysAddr, VirtAddr};
 
 /// Implements translation of physical to virtual addresses for a direct mapping.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -70,7 +70,7 @@ impl DirectMapping {
 
 #[cfg(test)]
 mod tests {
-    use bare_metal::{PhysAddr, VirtAddr};
+    use amd64::{PhysAddr, VirtAddr};
     use super::*;
 
     #[test]

@@ -8,7 +8,7 @@ extern crate log;
 #[macro_use]
 extern crate static_assertions;
 
-extern crate bare_metal;
+extern crate amd64;
 
 pub mod paging;
 pub mod physical;

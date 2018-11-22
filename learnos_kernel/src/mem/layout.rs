@@ -9,7 +9,7 @@
 //! - `0xFFFF_FF80_0000_0000` 511th PML4 entry, reserved for kernel usage
 //!   - `0xFFFF_FFFF_8000_0000` mapped to lowest 2 GiB, contains the kernel binary
 
-use bare_metal::{PhysAddr, VirtAddr};
+use amd64::{PhysAddr, VirtAddr};
 use kmem::paging::direct::DirectMapping;
 
 /// The virtual address where the kernel reserved area begins (highest 2 GiB)

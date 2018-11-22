@@ -12,7 +12,7 @@
 //! If the bootloader provides bogus data, trying to parse it using this structures
 //! likely ends in sadness.
 
-use bare_metal::{Alignable, PhysAddr};
+use amd64::{Alignable, PhysAddr};
 
 use core::iter::{Iterator, FusedIterator};
 use core::str;

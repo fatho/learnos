@@ -16,8 +16,7 @@ log = "0.4.6"
 spin = "0.4.10"
 
 acpi = { path = "../acpi" }
-bare_metal = { path = "../bare_metal" }
-interrupts = {path = "../interrupts"}
+amd64 = { path = "../amd64" }
 kmem = { path = "../kmem" }
 multiboot2 = {path = "../multiboot2"}
 

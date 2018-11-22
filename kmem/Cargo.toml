@@ -9,4 +9,4 @@ bitflags = "1.0.4"
 log = "0.4.6"
 static_assertions = "0.3.1"
 
-bare_metal = {path = "../bare_metal"}
+amd64 = {path = "../amd64"}

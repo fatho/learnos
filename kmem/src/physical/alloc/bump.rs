@@ -4,7 +4,7 @@
 //! via different means later.
 
 use core::cmp;
-use bare_metal::PhysAddr;
+use amd64::PhysAddr;
 
 use crate::physical::{PageFrame, PageFrameRegion};
 use super::{PageFrameAllocator};

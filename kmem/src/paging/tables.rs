@@ -1,4 +1,4 @@
-use bare_metal::PhysAddr;
+use amd64::PhysAddr;
 
 /// An entry in a page table.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]

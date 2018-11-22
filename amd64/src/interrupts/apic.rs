@@ -1,5 +1,5 @@
-use bare_metal::cpu;
-use bare_metal::{Alignable, PhysAddr};
+use crate::cpu;
+use crate::{Alignable, PhysAddr};
 
 use core::sync::atomic::{AtomicPtr, Ordering};
 

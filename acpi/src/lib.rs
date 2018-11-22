@@ -11,7 +11,7 @@ pub use self::rsdt::*;
 pub use self::xsdt::*;
 pub use self::madt::*;
 
-use bare_metal::{VirtAddr};
+use amd64::{VirtAddr};
 
 pub trait AcpiTable {
     fn is_valid(&self) -> bool;

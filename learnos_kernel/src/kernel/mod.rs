@@ -14,7 +14,7 @@
 // use ::alloc::vec::Vec;
 // use ::alloc::boxed::Box;
 
-// use bare_metal::{PhysAddr, VirtAddr};
+// use amd64::{PhysAddr, VirtAddr};
 // use acpi;
 // use acpi::AcpiTable;
 

@@ -3,9 +3,8 @@
 members = [
     # libraries
     "acpi",
-    "bare_metal",
+    "amd64",
     "kmem",
-    "interrupts",
     "multiboot2",
     # binary tying everything together
     "learnos_kernel",

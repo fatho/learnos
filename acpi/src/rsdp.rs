@@ -1,4 +1,4 @@
-use bare_metal::{Alignable, VirtAddr, PhysAddr};
+use amd64::{Alignable, VirtAddr, PhysAddr};
 use super::util;
 use super::{AcpiTable, AnySdt};
 

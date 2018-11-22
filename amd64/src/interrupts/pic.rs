@@ -1,4 +1,4 @@
-use bare_metal::cpu::io;
+use crate::cpu::io;
 
 pub const PIC1_CMD: io::PortNumber = io::PortNumber(0x0020);
 pub const PIC1_DATA: io::PortNumber = io::PortNumber(0x0021);

@@ -1,7 +1,7 @@
 //! Provides a kernel space heap allocator.
 //! The allocator must be instantiated in the root module as a static variable and marked with the #[global_allocator] attribute.
 
-use bare_metal::{Alignable, VirtAddr};
+use amd64::{Alignable, VirtAddr};
 use spin::Mutex;
 use ::alloc::alloc;
 

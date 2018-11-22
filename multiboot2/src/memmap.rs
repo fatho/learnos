@@ -1,6 +1,6 @@
 //! Parser for the Multiboot2 memory map.
 
-use bare_metal::{PhysAddr};
+use amd64::{PhysAddr};
 
 use core::iter::{Iterator, FusedIterator};
 use core::fmt;

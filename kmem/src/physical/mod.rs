@@ -1,4 +1,4 @@
-use bare_metal::{Alignable, PhysAddr};
+use amd64::{Alignable, PhysAddr};
 use core::ops;
 use crate::{PAGE_SIZE, PAGE_ALIGN_BITS};
 
@@ -86,7 +86,7 @@ impl PageFrameRegion {
 
 #[cfg(test)]
 mod test {
-    use bare_metal::{PhysAddr};
+    use amd64::{PhysAddr};
     use super::PageFrameRegion;
 
     #[test]

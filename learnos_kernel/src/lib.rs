@@ -28,9 +28,7 @@ extern crate bitflags;
 
 // other crates from this workspace
 extern crate acpi;
-extern crate bare_metal;
-#[macro_use]
-extern crate interrupts;
+extern crate amd64;
 extern crate kmem;
 extern crate multiboot2;
 
@@ -38,10 +36,10 @@ use core::cmp;
 use core::iter;
 
 use acpi::AcpiTable;
-use bare_metal::*;
-use bare_metal::segments::Ring;
-use interrupts::idt::{IdtEntry, Idt};
-use interrupts::apic::{Apic, LvtTimer, TimerDivisor};
+use amd64::*;
+use amd64::segments::Ring;
+use amd64::interrupts::idt::{IdtEntry, Idt};
+use amd64::interrupts::apic::{Apic, LvtTimer, TimerDivisor};
 use kmem::physical::alloc as kmem_alloc;
 use kmem::physical::{PageFrameRegion, PageFrame};
 
@@ -77,7 +75,7 @@ static LOGGER: &'static log::Log = &diagnostics::FanOutLogger
 static APIC: Apic = Apic::new(core::ptr::null_mut());
 
 mod selectors {
-    use bare_metal::segments::Selector;
+    use amd64::segments::Selector;
 
     pub const KERNEL_CODE: Selector = Selector(8);
     #[allow(dead_code)]

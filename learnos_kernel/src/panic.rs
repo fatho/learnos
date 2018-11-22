@@ -6,7 +6,7 @@ use core::fmt::{Write};
 #[cfg(not(test))]
 use crate::vga;
 #[cfg(not(test))]
-use bare_metal::cpu;
+use amd64::cpu;
 #[cfg(not(test))]
 use crate::mem::layout;
 
@@ -48,7 +48,7 @@ fn panic(panic_info: &PanicInfo) -> ! {
     writeln!(com1, "{}", panic_info);
 
     unsafe {
-        interrupts::disable();
+        amd64::interrupts::disable();
         cpu::hang()
     }
 }

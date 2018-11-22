@@ -1,4 +1,4 @@
-use bare_metal::{PhysAddr};
+use amd64::{PhysAddr};
 use core::mem;
 
 use super::{AnySdt, SdtHeader, AcpiTable};

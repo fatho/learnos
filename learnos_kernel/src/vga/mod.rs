@@ -4,7 +4,7 @@
 //! concurrent modification of the same memory location, as there is
 //! only one VGA buffer.
 
-use bare_metal::{PhysAddr, VirtAddr};
+use amd64::{PhysAddr, VirtAddr};
 use spin;
 use core::fmt;
 

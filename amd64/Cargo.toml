@@ -1,7 +1,9 @@
 [package]
-name = "bare_metal"
+name = "amd64"
 version = "0.1.0"
 authors = ["Fabian Thorand <f.thorand@gmail.com>"]
 edition = "2018"
 
 [dependencies]
+static_assertions = "0.3.1"
+log = "0.4.6"
