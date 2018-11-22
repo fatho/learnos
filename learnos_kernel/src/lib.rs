@@ -49,7 +49,6 @@ pub mod globals;
 pub mod vga;
 pub mod panic;
 pub mod mem;
-mod kernel;
 
 use self::mem::layout::DIRECT_MAPPING;
 
