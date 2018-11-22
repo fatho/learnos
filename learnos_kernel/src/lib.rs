@@ -41,7 +41,7 @@ use acpi::AcpiTable;
 use amd64::*;
 use amd64::segments::Ring;
 use amd64::interrupts::idt::{IdtEntry, Idt};
-use amd64::interrupts::apic::{Apic, LvtTimer, TimerDivisor};
+use amd64::interrupts::apic::{ApicRegisters, LvtTimer, TimerDivisor};
 use kmem::physical::alloc as kmem_alloc;
 use kmem::physical::{PageFrameRegion, PageFrame};
 
@@ -74,7 +74,7 @@ static IDT: spin::Mutex<Idt> = spin::Mutex::new(Idt::new());
 static LOGGER: &'static log::Log = &diagnostics::FanOutLogger
     (diagnostics::SerialLogger, diagnostics::VgaLogger);
 
-static APIC: Apic = Apic::new(core::ptr::null_mut());
+static APIC: ApicRegisters = ApicRegisters::new(core::ptr::null_mut());
 
 lazy_static! {
     static ref CPUS: spin::RwLock<smp::CpuTable> = spin::RwLock::new(smp::CpuTable::new());

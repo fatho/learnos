@@ -49,9 +49,9 @@ pub unsafe fn set_enabled(enabled: bool) {
 }
 
 /// Interface to the local APIC via the memory mapped registers.
-pub struct Apic(AtomicPtr<u32>);
+pub struct ApicRegisters(AtomicPtr<u32>);
 
-impl Apic {
+impl ApicRegisters {
     pub const SPURIOUS_INTERRUPT_VECTOR_REG: usize = 0xF0;
     pub const EOI_REG: usize = 0xB0;
     pub const LVT_TIMER_REG: usize = 0x320;
@@ -61,8 +61,8 @@ impl Apic {
     pub const ERROR_STATUS_REG: usize = 0x280;
     pub const TASK_PRIORITY_REG: usize = 0x80;
 
-    pub const fn new(base_addr: *mut u32) -> Apic {
-        Apic(AtomicPtr::new(base_addr))
+    pub const fn new(base_addr: *mut u32) -> ApicRegisters {
+        ApicRegisters(AtomicPtr::new(base_addr))
     }
 
     pub unsafe fn set_base_address(&self, new_base: *mut u32) {
