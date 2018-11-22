@@ -10,7 +10,7 @@
 #![feature(extern_crate_item_prelude)]
 #![feature(alloc_error_handler)]
 #![feature(core_intrinsics)]
-#![feature(abi_x86_interrupt)]
+#![feature(maybe_uninit)]
 
 // built-in crates
 #[macro_use]
@@ -18,6 +18,8 @@ extern crate core;
 #[macro_use]
 extern crate log;
 extern crate spin;
+#[macro_use]
+extern crate lazy_static;
 //extern crate alloc;
 
 // crates from crates.io
@@ -49,6 +51,7 @@ pub mod globals;
 pub mod vga;
 pub mod panic;
 pub mod mem;
+pub mod smp;
 
 use self::mem::layout::DIRECT_MAPPING;
 
@@ -72,6 +75,10 @@ static LOGGER: &'static log::Log = &diagnostics::FanOutLogger
     (diagnostics::SerialLogger, diagnostics::VgaLogger);
 
 static APIC: Apic = Apic::new(core::ptr::null_mut());
+
+lazy_static! {
+    static ref CPUS: spin::RwLock<smp::CpuTable> = spin::RwLock::new(smp::CpuTable::new());
+}
 
 mod selectors {
     use amd64::segments::Selector;
@@ -122,26 +129,8 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     // Initialize page frame allocator. It can only give us chunks of 4KB.
     // Fortunately, we mostly want to allocate page tables (which conveniently are 4KB in size)
     // and metadata for the better allocators (which can be reasonably rounded up to the next 4KB).
-    let _boot_pfa = kmem_alloc::BumpAllocator::new(bootmem_regions);    
+    let _boot_pfa = kmem_alloc::BumpAllocator::new(bootmem_regions);
     debug!("[Bootmem] page frame allocator initialized");
-
-    // Find the root ACPI table
-    let rsdp = unsafe { find_acpi_rsdp().expect("ACPI not supported") };
-    let rsdt = unsafe { acpi::table_from_raw::<acpi::Rsdt>(DIRECT_MAPPING.phys_to_virt(rsdp.rsdt_address())).expect("RSDT is corrupted") };
-    
-    let acpi_tables = rsdt.sdt_pointers()
-        .map(|acpi_table_phys| DIRECT_MAPPING.phys_to_virt(acpi_table_phys))
-        .map(|acpi_table_virt| unsafe { acpi::table_from_raw::<acpi::AnySdt>(acpi_table_virt).expect("Corrupted ACPI table") });
-    for tbl in acpi_tables {
-        unsafe {
-            debug!("[ACPI] {}", core::str::from_utf8_unchecked(tbl.signature()));
-        }
-        if let Some(madt) = acpi::Madt::from_any(tbl) {
-            for e in madt.entries() {
-                debug!("  {:?}", e);
-            }
-        }
-    }
 
     // TODO: setup proper address space
 
@@ -178,7 +167,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
             panic!("APIC not supported")
         }
 
-        info!("BSP APIC ID {}", interrupts::apic::local_apic_id());
+        info!("BSP APIC ID {:?}", interrupts::apic::local_apic_id());
 
         if ! interrupts::apic::is_enabled()  {
             info!("APIC support not yet enabled, enabling now");
@@ -195,30 +184,54 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
         APIC.set_spurious_interrupt_vector(0xFF);
         APIC.set_software_enable(true);
         APIC.set_task_priority(0);
-        
+
         info!("APIC enabled");
 
-        // TODO: configure IO APIC
-
-
         interrupts::enable();
-
-        // test timer
-        APIC.set_timer_divisor(TimerDivisor::Divisor16);
-        APIC.set_lvt_timer(LvtTimer::periodic(32));
-        APIC.set_timer_initial_count(1024);
-
-        asm!("int 33" : : : "rax" : "intel", "volatile");
-
-        debug!("Timer: {:x?} {:x?} {:x?} {:x?}", APIC.timer_divisor(), APIC.timer_initial_count(), APIC.timer_current_count(), APIC.lvt_timer());
-        debug!("APIC error status: {:x}", APIC.error_status());
     }
 
-    let bla = 0x1_00000000 as *const u32;
-    unsafe {
-        let val = *bla;
-        info!("IMPORTANT: {}", val);
+    // Find the root ACPI table
+    let rsdp = unsafe { find_acpi_rsdp().expect("ACPI not supported") };
+    let rsdt = unsafe { acpi::table_from_raw::<acpi::Rsdt>(DIRECT_MAPPING.phys_to_virt(rsdp.rsdt_address())).expect("RSDT is corrupted") };
+
+    // iterate over all ACPI tables
+    let acpi_tables = rsdt.sdt_pointers()
+        .map(|acpi_table_phys| DIRECT_MAPPING.phys_to_virt(acpi_table_phys))
+        .map(|acpi_table_virt| unsafe { acpi::table_from_raw::<acpi::AnySdt>(acpi_table_virt).expect("Corrupted ACPI table") });
+
+    for tbl in acpi_tables {
+        unsafe {
+            debug!("[ACPI] {}", core::str::from_utf8_unchecked(tbl.signature()));
+        }
+        // The MADT is of particular interest, because it contains information about
+        // all the processors and interrupt controllers in the system.
+        if let Some(madt) = acpi::Madt::from_any(tbl) {
+            for e in madt.iter() {
+                debug!("  {:?}", e);
+            }
+            let this_apic = interrupts::apic::local_apic_id();
+            let mut cpus = CPUS.write();
+            cpus.extend(
+                madt.processor_local_apics()
+                    .filter(|lapic| lapic.processor_enabled())
+                    .map(|lapic| smp::CpuInfo {
+                        acpi_id: lapic.processor_id(),
+                        apic_id: lapic.apic_id(),
+                        is_bsp: this_apic == lapic.apic_id(),
+                    })
+            );
+            assert!(cpus.count() > 0, "BUG: no CPUs detected");
+        }
     }
+
+    info!("Detected {} CPUs", CPUS.read().count());
+    for c in CPUS.read().iter() {
+        info!("  {:?}", c);
+    }
+
+
+    // TODO: configure IO APIC
+
 
     unsafe {
         cpu::hang()
@@ -226,23 +239,11 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
 }
 
 unsafe fn find_acpi_rsdp() -> Option<&'static acpi::Rsdp> {
-    let find_phys = |start_phys, end_phys| 
+    let find_phys = |start_phys, end_phys|
             acpi::Rsdp::find(DIRECT_MAPPING.phys_to_virt(PhysAddr(start_phys)),
                              DIRECT_MAPPING.phys_to_virt(PhysAddr(end_phys)));
     find_phys(0xE0000, 0xFFFFF).or(find_phys(0, 1024))
 }
-
-#[naked]
-fn retpoline() {
-    info!("retpolined");
-    unsafe {
-        let ret: u64;
-        asm!("int 33" : "={rax}"(ret) : : : "intel");
-        info!("int 33 returned {}", ret);
-        cpu::hang();
-    }
-}
-
 
 exception_handler_with_code! {
     fn df_handler(_frame: &interrupts::InterruptFrame, error_code: u64) {
@@ -257,9 +258,8 @@ exception_handler_with_code! {
         unsafe {
             asm!("mov $0, cr2" : "=r"(addr) : : : "intel");
         }
-        error!("Page fault: {:05b} - {:p}\n{:X?}", error_code, VirtAddr(addr), stack_frame);
-        stack_frame.rip = retpoline as usize;
         unsafe { APIC.signal_eoi(); }
+        panic!("Page fault: {:05b} - {:p}\n{:X?}", error_code, VirtAddr(addr), stack_frame);
     }
 }
 

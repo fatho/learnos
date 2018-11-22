@@ -1,6 +1,7 @@
 pub mod idt;
 pub mod pic;
 pub mod apic;
+pub mod ioapic;
 
 /// Enable interrupts on the current CPU.
 #[inline]
@@ -73,7 +74,7 @@ macro_rules! interrupt_handler_raw {
         unsafe extern "C" fn $name() -> ! {
             // clear direction bit, will be restored by iretq
             asm!("cld");
-            
+
             {
                 $body
             }

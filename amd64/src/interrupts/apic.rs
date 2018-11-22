@@ -3,14 +3,18 @@ use crate::{Alignable, PhysAddr};
 
 use core::sync::atomic::{AtomicPtr, Ordering};
 
+/// The identifier of an APIC.
+#[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Copy, Clone)]
+pub struct ApicId(pub u8);
+
 pub fn supported() -> bool {
     let (_, _, _, edx) = cpu::cpuid(1);
     edx & (1 << 9) != 0
 }
 
-pub fn local_apic_id() -> u8 {
+pub fn local_apic_id() -> ApicId {
     let (_, ebx, _, _) = cpu::cpuid(1);
-    ((ebx >> 24) & 0xFF) as u8
+    ApicId(((ebx >> 24) & 0xFF) as u8)
 }
 
 
@@ -146,6 +150,7 @@ impl Apic {
         self.read_reg(Self::CURRENT_COUNT_REG)
     }
 
+    // TODO: better wrapper around APIC error status
     pub unsafe fn error_status(&self) -> u32 {
         self.read_reg(Self::ERROR_STATUS_REG)
     }
@@ -169,7 +174,6 @@ impl Apic {
     pub unsafe fn read_reg(&self, reg_index: usize) -> u32 {
         assert!(reg_index.is_aligned(16), "misaligned APIC register index");
         let reg_addr = self.0.load(Ordering::Acquire).add(reg_index >> 2);
-        debug!("Reading APIC register: {:x} at {:p}", reg_index, reg_addr);
         reg_addr.read_volatile()
     }
 }

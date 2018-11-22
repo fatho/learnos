@@ -1,4 +1,5 @@
 use amd64::{PhysAddr};
+use amd64::interrupts::apic::ApicId;
 
 use super::{AnySdt, SdtHeader, AcpiTable};
 use super::util;
@@ -39,7 +40,7 @@ impl Madt {
     /// otherwise, the 32 bit address from the header is returned.
     pub fn local_apic_address(&self) -> PhysAddr {
         let default_addr = PhysAddr(self.local_apic_address as usize);
-        self.entries()
+        self.iter()
             .find_map(|r| r.local_apic_address_override())
             .map_or(default_addr, |r| r.local_apic_address())
     }
@@ -56,14 +57,21 @@ impl Madt {
         }
     }
 
-    pub fn entries(&self) -> impl Iterator<Item=MadtEntry> {
+    /// Iterate over all MADT entries.
+    pub fn iter(&self) -> impl Iterator<Item=MadtEntry> {
         self.entry_headers().map(MadtEntry::from_header)
     }
 
-    /// Returns an iterator over all local 
+    /// Returns an iterator over all local APICS.
     pub fn processor_local_apics(&self) -> impl Iterator<Item=&ProcessorLocalApic> {
-        self.entries()
+        self.iter()
             .filter_map(|f| f.processor_local_apic())
+    }
+
+    /// Returns an iterator over all IO apics.
+    pub fn io_apics(&self) -> impl Iterator<Item=&IoApic> {
+        self.iter()
+            .filter_map(|f| f.io_apic())
     }
 }
 
@@ -190,12 +198,18 @@ pub struct ProcessorLocalApic {
 impl ProcessorLocalApic {
     pub const ENTRY_TYPE: u8 = 0;
 
+    /// Return the ACPI processor ID of the CPU that this APIC belongs to.
+    #[inline(always)]
     pub fn processor_id(&self) -> u8 {
         self.processor_id
     }
-    pub fn apic_id(&self) -> u8 {
-        self.apic_id
+
+    /// Return the id of this APIC.
+    pub fn apic_id(&self) -> ApicId {
+        ApicId(self.apic_id)
     }
+
+    /// Check whether the CPU belonging to this APIC is enabled.
     pub fn processor_enabled(&self) -> bool {
         self.flags & 1 != 0
     }

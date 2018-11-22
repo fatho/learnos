@@ -14,6 +14,7 @@ static_assertions = "0.3.1"
 bitflags = "1.0.4"
 log = "0.4.6"
 spin = "0.4.10"
+lazy_static = { version = "1.2.0", features = ["spin_no_std"] }
 
 acpi = { path = "../acpi" }
 amd64 = { path = "../amd64" }
