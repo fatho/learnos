@@ -42,6 +42,7 @@ use amd64::*;
 use amd64::segments::Ring;
 use amd64::interrupts::idt::{IdtEntry, Idt};
 use amd64::interrupts::apic::{ApicRegisters, LvtTimer, TimerDivisor};
+use amd64::interrupts::ioapic::{IoApicRegisters};
 use kmem::physical::alloc as kmem_alloc;
 use kmem::physical::{PageFrameRegion, PageFrame};
 
@@ -78,6 +79,7 @@ static APIC: ApicRegisters = ApicRegisters::new(core::ptr::null_mut());
 
 lazy_static! {
     static ref CPUS: spin::RwLock<smp::CpuTable> = spin::RwLock::new(smp::CpuTable::new());
+    static ref IOAPICS: spin::RwLock<smp::IoApicTable> = spin::RwLock::new(smp::IoApicTable::new());
 }
 
 mod selectors {
@@ -200,15 +202,14 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
         .map(|acpi_table_virt| unsafe { acpi::table_from_raw::<acpi::AnySdt>(acpi_table_virt).expect("Corrupted ACPI table") });
 
     for tbl in acpi_tables {
-        unsafe {
-            debug!("[ACPI] {}", core::str::from_utf8_unchecked(tbl.signature()));
-        }
+        debug!("[ACPI] {}", core::str::from_utf8(tbl.signature()).unwrap_or("<INVALID SIGNATURE>"));
         // The MADT is of particular interest, because it contains information about
         // all the processors and interrupt controllers in the system.
         if let Some(madt) = acpi::Madt::from_any(tbl) {
             for e in madt.iter() {
                 debug!("  {:?}", e);
             }
+            // get processor information
             let this_apic = interrupts::apic::local_apic_id();
             let mut cpus = CPUS.write();
             cpus.extend(
@@ -221,6 +222,29 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
                     })
             );
             assert!(cpus.count() > 0, "BUG: no CPUs detected");
+
+            // get I/O APIC information
+            let mut ioapics = IOAPICS.write();
+            ioapics.extend(
+                madt.io_apics()
+                    .map(|ioapic| {
+                        // query the I/O APIC for some extra information
+                        let regs = unsafe { IoApicRegisters::new(DIRECT_MAPPING.phys_to_virt(ioapic.address()).as_mut_ptr()) };
+                        let redir_count = unsafe { regs.max_redirection_entries() };
+                        let version = unsafe { regs.version() };
+                        smp::IoApicInfo {
+                            id: ioapic.id(),
+                            addr: ioapic.address(),
+                            irq_base: ioapic.global_system_interrupt_base(),
+                            max_redir_count: redir_count,
+                            version: version,
+                        }
+                    })
+            );
+            assert!(ioapics.count() > 0, "BUG: no I/O APICs detected");
+
+
+            // TODO: configure IO APIC by reading the interrupt override entires in MADT
         }
     }
 
@@ -228,10 +252,10 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     for c in CPUS.read().iter() {
         info!("  {:?}", c);
     }
-
-
-    // TODO: configure IO APIC
-
+    info!("Detected {} I/O APICS", IOAPICS.read().count());
+    for ioa in IOAPICS.read().iter() {
+        info!("  {:?}", ioa);
+    }
 
     unsafe {
         cpu::hang()

@@ -1,5 +1,6 @@
 use amd64::{PhysAddr};
 use amd64::interrupts::apic::ApicId;
+use amd64::interrupts::ioapic::IoApicId;
 
 use super::{AnySdt, SdtHeader, AcpiTable};
 use super::util;
@@ -227,6 +228,23 @@ pub struct IoApic {
 
 impl IoApic {
     pub const ENTRY_TYPE: u8 = 1;
+
+    /// The I/O APIC’s ID.
+    pub fn id(&self) -> IoApicId {
+        IoApicId(self.io_apic_id)
+    }
+
+    /// The 32-bit physical address to access this I/O APIC. Each I/O APIC resides at a unique address.
+    pub fn address(&self) -> PhysAddr {
+        PhysAddr(self.io_apic_address as usize)
+    }
+
+    /// The global system interrupt number where this I/O APIC’s interrupt
+    /// inputs start. The number of interrupt inputs is determined by the I/O
+    /// APIC’s Max Redir Entry register.
+    pub fn global_system_interrupt_base(&self) -> u32 {
+        self.global_system_interrupt_base
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

@@ -2,6 +2,7 @@ use core::iter;
 use core::mem;
 use core::ops;
 
+use amd64::PhysAddr;
 use amd64::interrupts::apic::ApicId;
 use amd64::interrupts::ioapic::IoApicId;
 
@@ -11,6 +12,8 @@ pub const MAX_CPU_COUNT: usize = 256;
 /// Architectural limit for the number of IO APICs in a system.
 pub const MAX_IOAPIC_COUNT: usize = 256;
 
+/// Architectural limit for the number of IO APICs in a system.
+pub const MAX_ISA_IRQ_COUNT: usize = 256;
 
 /// Stores information about a CPU.
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -24,6 +27,20 @@ pub struct CpuInfo {
 #[derive(Eq, PartialEq, Clone, Debug)]
 pub struct IoApicInfo {
     pub id: IoApicId,
+    /// The physical address to access this I/O APIC. Each I/O APIC resides at a unique address.
+    pub addr: PhysAddr,
+    /// The global system interrupt number where this I/O APIC’s interrupt
+    /// inputs start. The number of interrupt inputs is determined by the I/O
+    /// APIC’s Max Redir Entry register.
+    pub irq_base: u32,
+    /// Maximum number of input inerrupts of this I/O APIC.
+    pub max_redir_count: u32,
+    /// The I/O APIC version
+    pub version: u32,
+}
+
+pub struct IrqInfo {
+    pub global_system_interrupt: u32,
 }
 
 macro_rules! info_table {
