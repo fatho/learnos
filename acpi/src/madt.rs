@@ -1,5 +1,6 @@
 use amd64::{PhysAddr};
-use amd64::interrupts::apic::ApicId;
+use amd64::util::Bits;
+use amd64::interrupts::apic::{ApicId, TriggerMode, Polarity};
 use amd64::interrupts::ioapic::IoApicId;
 
 use super::{AnySdt, SdtHeader, AcpiTable};
@@ -73,6 +74,12 @@ impl Madt {
     pub fn io_apics(&self) -> impl Iterator<Item=&IoApic> {
         self.iter()
             .filter_map(|f| f.io_apic())
+    }
+
+    /// Returns an iterator over all interrupt source overrides.
+    pub fn interrupt_source_overrides(&self) -> impl Iterator<Item=&InterruptSourceOverride> {
+        self.iter()
+            .filter_map(|f| f.interrupt_source_override())
     }
 }
 
@@ -263,6 +270,38 @@ pub struct InterruptSourceOverride {
 
 impl InterruptSourceOverride {
     pub const ENTRY_TYPE: u8 = 2;
+
+    pub fn bus_source(&self) -> u8 {
+        self.bus_source
+    }
+
+    pub fn irq_source(&self) -> u8 {
+        self.irq_source
+    }
+
+    pub fn global_system_interrupt(&self) -> u32 {
+        self.global_system_interrupt
+    }
+
+    pub fn trigger_mode(&self) -> Option<TriggerMode> {
+        let flags = self.flags;
+        match flags.get_bits(2..=3) {
+            0b00 => None,
+            0b01 => Some(TriggerMode::EdgeTriggered),
+            0b11 => Some(TriggerMode::LevelTriggered),
+            _ => panic!("Corrupt interrupt source override entry in MADT: {:?}", self),
+        }
+    }
+
+    pub fn polarity(&self) -> Option<Polarity> {
+        let flags = self.flags;
+        match flags.get_bits(2..=3) {
+            0b00 => None,
+            0b01 => Some(Polarity::HighActive),
+            0b11 => Some(Polarity::LowActive),
+            _ => panic!("Corrupt interrupt source override entry in MADT: {:?}", self),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, Eq, PartialEq)]

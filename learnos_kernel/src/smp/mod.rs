@@ -3,7 +3,7 @@ use core::mem;
 use core::ops;
 
 use amd64::PhysAddr;
-use amd64::interrupts::apic::ApicId;
+use amd64::interrupts::apic::{ApicId, Polarity, TriggerMode};
 use amd64::interrupts::ioapic::IoApicId;
 
 /// Architectural limit for the number of CPUs in a system.
@@ -12,8 +12,8 @@ pub const MAX_CPU_COUNT: usize = 256;
 /// Architectural limit for the number of IO APICs in a system.
 pub const MAX_IOAPIC_COUNT: usize = 256;
 
-/// Architectural limit for the number of IO APICs in a system.
-pub const MAX_ISA_IRQ_COUNT: usize = 256;
+/// Maximum number of ISA IRQs.
+pub const MAX_ISA_IRQ_COUNT: usize = 32;
 
 /// Stores information about a CPU.
 #[derive(Eq, PartialEq, Clone, Debug)]
@@ -39,8 +39,15 @@ pub struct IoApicInfo {
     pub version: u32,
 }
 
+/// Sotres information about an IRQ.
 pub struct IrqInfo {
+    /// The global system interrupt that this IRQ is mapped to. This determines the I/O APIC which receives
+    /// the interrupt, and the index of the redirection table entry.
     pub global_system_interrupt: u32,
+    /// Polarity of the interrupt. This is needed for correctly setting up the I/O APIC entry for this IRQ.
+    pub polarity: Polarity,
+    /// Trigger mode of the interrupt. This is needed for correctly setting up the I/O APIC entry for this IRQ.
+    pub trigger_mode: TriggerMode,
 }
 
 macro_rules! info_table {
@@ -138,6 +145,10 @@ info_table!(IoApicTable, IoApicInfo, MAX_IOAPIC_COUNT, {
     pub fn by_id(&self, ioapic_id: IoApicId) -> Option<&IoApicInfo> {
         self.iter().find(|ioapic| ioapic.id == ioapic_id)
     }
+
+    pub fn by_gsi(&self, gsi: u32) -> Option<&IoApicInfo> {
+        self.iter().find(|ioapic| gsi >= ioapic.irq_base && gsi < ioapic.irq_base + ioapic.max_redir_count)
+    }
 });
 
 info_table!(CpuTable, CpuInfo, MAX_CPU_COUNT, {
@@ -157,3 +168,39 @@ info_table!(CpuTable, CpuInfo, MAX_CPU_COUNT, {
         self.iter().filter(|cpu| ! cpu.is_bsp)
     }
 });
+
+pub struct IsaIrqTable([IrqInfo; MAX_ISA_IRQ_COUNT]);
+
+impl IsaIrqTable {
+    pub fn new() -> IsaIrqTable {
+        let mut table = unsafe { IsaIrqTable(mem::uninitialized()) };
+        // setup the default identity mapping
+        for irq in 0..MAX_ISA_IRQ_COUNT {
+            let entry = IrqInfo {
+                global_system_interrupt: irq as u32,
+                polarity: Polarity::HighActive,
+                trigger_mode: TriggerMode::EdgeTriggered,
+            };
+            table.0[irq] = entry;
+        }
+        table
+    }
+
+    pub fn iter(&self) -> impl Iterator<Item=&IrqInfo> {
+        self.0.iter()
+    }
+}
+
+impl ops::Index<usize> for IsaIrqTable {
+    type Output = IrqInfo;
+
+    fn index(&self, idx: usize) -> &IrqInfo {
+        &self.0[idx]
+    }
+}
+
+impl ops::IndexMut<usize> for IsaIrqTable {
+    fn index_mut(&mut self, idx: usize) -> &mut IrqInfo {
+        &mut self.0[idx]
+    }
+}

@@ -41,7 +41,7 @@ use acpi::AcpiTable;
 use amd64::*;
 use amd64::segments::Ring;
 use amd64::interrupts::idt::{IdtEntry, Idt};
-use amd64::interrupts::apic::{ApicRegisters, LvtTimerEntry, TimerDivisor};
+use amd64::interrupts::apic::{ApicRegisters, TriggerMode, Polarity, LvtTimerEntry, TimerDivisor};
 use amd64::interrupts::ioapic::{IoApicRegisters};
 use kmem::physical::alloc as kmem_alloc;
 use kmem::physical::{PageFrameRegion, PageFrame};
@@ -80,6 +80,8 @@ static APIC: ApicRegisters = ApicRegisters::new(core::ptr::null_mut());
 lazy_static! {
     static ref CPUS: spin::RwLock<smp::CpuTable> = spin::RwLock::new(smp::CpuTable::new());
     static ref IOAPICS: spin::RwLock<smp::IoApicTable> = spin::RwLock::new(smp::IoApicTable::new());
+
+    static ref IRQS: spin::RwLock<smp::IsaIrqTable> = spin::RwLock::new(smp::IsaIrqTable::new());
 }
 
 mod selectors {
@@ -188,8 +190,6 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
         APIC.set_task_priority(0);
 
         info!("APIC enabled");
-
-        interrupts::enable();
     }
 
     // Find the root ACPI table
@@ -206,43 +206,44 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
         // The MADT is of particular interest, because it contains information about
         // all the processors and interrupt controllers in the system.
         if let Some(madt) = acpi::Madt::from_any(tbl) {
-            for e in madt.iter() {
-                debug!("  {:?}", e);
-            }
-            // get processor information
             let this_apic = interrupts::apic::local_apic_id();
             let mut cpus = CPUS.write();
-            cpus.extend(
-                madt.processor_local_apics()
-                    .filter(|lapic| lapic.processor_enabled())
-                    .map(|lapic| smp::CpuInfo {
-                        acpi_id: lapic.processor_id(),
-                        apic_id: lapic.apic_id(),
-                        is_bsp: this_apic == lapic.apic_id(),
-                    })
-            );
-            assert!(cpus.count() > 0, "BUG: no CPUs detected");
-
-            // get I/O APIC information
             let mut ioapics = IOAPICS.write();
-            ioapics.extend(
-                madt.io_apics()
-                    .map(|ioapic| {
-                        // query the I/O APIC for some extra information
-                        let regs = unsafe { IoApicRegisters::new(DIRECT_MAPPING.phys_to_virt(ioapic.address()).as_mut_ptr()) };
-                        let redir_count = unsafe { regs.max_redirection_entries() };
-                        let version = unsafe { regs.version() };
-                        smp::IoApicInfo {
-                            id: ioapic.id(),
-                            addr: ioapic.address(),
-                            irq_base: ioapic.global_system_interrupt_base(),
-                            max_redir_count: redir_count,
-                            version: version,
-                        }
-                    })
-            );
-            assert!(ioapics.count() > 0, "BUG: no I/O APICs detected");
+            let mut irqs = IRQS.write();
 
+            for entry in madt.iter() {
+                debug!("  {:?}", entry);
+                if let Some(lapic) = entry.processor_local_apic() {
+                    if lapic.processor_enabled() {
+                        cpus.insert(smp::CpuInfo {
+                            acpi_id: lapic.processor_id(),
+                            apic_id: lapic.apic_id(),
+                            is_bsp: this_apic == lapic.apic_id()
+                        });
+                    }
+                } else if let Some(ioapic) = entry.io_apic() {
+                    // query the I/O APIC for some extra information
+                    let regs = unsafe { IoApicRegisters::new(DIRECT_MAPPING.phys_to_virt(ioapic.address()).as_mut_ptr()) };
+                    let redir_count = unsafe { regs.max_redirection_entries() };
+                    let version = unsafe { regs.version() };
+                    ioapics.insert(smp::IoApicInfo {
+                        id: ioapic.id(),
+                        addr: ioapic.address(),
+                        irq_base: ioapic.global_system_interrupt_base(),
+                        max_redir_count: redir_count,
+                        version: version,
+                    });
+                } else if let Some(iso) = entry.interrupt_source_override() {
+                    let irq = iso.irq_source() as usize;
+                    irqs[irq].global_system_interrupt = iso.global_system_interrupt();
+                    // assume ISA defaults when no specific polarity and trigger mode are given
+                    irqs[irq].polarity = iso.polarity().unwrap_or(Polarity::HighActive);
+                    irqs[irq].trigger_mode = iso.trigger_mode().unwrap_or(TriggerMode::EdgeTriggered);
+                }
+            }
+
+            assert!(cpus.count() > 0, "BUG: no CPUs detected");
+            assert!(ioapics.count() > 0, "BUG: no I/O APICs detected");
 
             // TODO: configure IO APIC by reading the interrupt override entires in MADT
         }
@@ -258,6 +259,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     }
 
     unsafe {
+        interrupts::enable();
         cpu::hang()
     }
 }

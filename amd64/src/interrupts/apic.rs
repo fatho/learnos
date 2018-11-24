@@ -214,7 +214,8 @@ pub enum DeliveryMode {
     /// Deliver the signal on the INTR signal of the processor core that is
     /// executing at the lowest priority among all the processors listed in the
     /// specified destination. Trigger Mode for "lowest priority". Delivery Mode
-    /// can be edge or level.
+    /// can be edge or level. This setting is only valid in the I/O APIC and reserved
+    /// in the local vector table of an APIC.
     LowestPriority = 0b001,
     /// System Management Interrupt. A delivery mode equal to SMI requires an
     /// edge trigger mode. The vector information is ignored but must be
