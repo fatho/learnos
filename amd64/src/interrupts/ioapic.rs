@@ -1,5 +1,5 @@
 use crate::util::Bits;
-use crate::interrupts::apic::DeliveryStatus;
+use crate::interrupts::apic::{DeliveryStatus, DeliveryMode, TriggerMode, Polarity};
 
 /// The identifier of an IOAPIC.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Copy, Clone)]
@@ -84,75 +84,6 @@ pub struct RedirectionEntry(u64);
 pub enum DestinationMode {
     Physical = 0,
     Logical = 1
-}
-
-/// The Delivery Mode is a 3 bit field that specifies how the
-/// APICs listed in the destination field should act upon reception of this signal. Note that certain
-/// Delivery Modes only operate as intended when used in conjunction with a specific trigger Mode.
-/// These restrictions are indicated in the following table for each Delivery Mode.
-#[repr(u8)]
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
-pub enum DeliveryMode {
-    /// Deliver  the  signal  on  the  INTR  signal  of  all  processor  cores  listed  in  the
-    /// destination. Trigger Mode for "fixed" Delivery Mode can be edge or level.
-    Fixed = 0,
-    /// Deliver the signal on the INTR signal of the processor core that is
-    /// executing at the lowest priority among all the processors listed in the
-    /// specified destination. Trigger Mode for "lowest priority". Delivery Mode
-    /// can be edge or level.
-    LowestPriority = 1,
-    /// System Management Interrupt. A delivery mode equal to SMI requires an
-    /// edge trigger mode. The vector information is ignored but must be
-    /// programmed to all zeroes for future compatibility
-    SMI = 2,
-    /// Deliver the signal on the NMI signal of all processor cores listed in the
-    /// destination. Vector information is ignored. NMI is treated as an edge
-    /// triggered interrupt, even if it is programmed as a level triggered interrupt.
-    /// For proper operation, this redirection table entry must be programmed to
-    /// "edge" triggered interrupt.
-    NMI = 4,
-    /// Deliver the signal to all processor cores listed in the destination by
-    /// asserting the INIT signal. All addressed local APICs will assume their
-    /// INIT state. INIT is always treated as an edge triggered interrupt, even if
-    /// programmed otherwise. For proper operation, this redirection table entry
-    /// must be programmed to
-    /// "edge" triggered interrupt.
-    INIT = 5,
-    /// Deliver the signal to the INTR signal of all processor cores listed in the
-    /// destination as an interrupt that originated in an externally connected
-    /// (8259A-compatible) interrupt controller. The INTA cycle that corresponds
-    /// to this ExtINT delivery is routed to the external controller that is expected
-    /// to supply the vector. A Delivery Mode of "ExtINT"  requires an edge
-    /// trigger mode.
-    ExtInit = 7
-}
-
-impl DeliveryMode {
-    pub fn parse(value: u8) -> Option<DeliveryMode> {
-        match value {
-            0 => Some(DeliveryMode::Fixed),
-            1 => Some(DeliveryMode::LowestPriority),
-            2 => Some(DeliveryMode::SMI),
-            4 => Some(DeliveryMode::NMI),
-            5 => Some(DeliveryMode::INIT),
-            7 => Some(DeliveryMode::ExtInit),
-            _ => None
-        }
-    }
-}
-
-#[repr(u8)]
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
-pub enum Polarity {
-    HighActive = 0,
-    LowActive = 1
-}
-
-#[repr(u8)]
-#[derive(Eq, PartialEq, Clone, Copy, Debug)]
-pub enum TriggerMode {
-    EdgeTriggered = 0,
-    LevelTriggered = 1
 }
 
 impl RedirectionEntry {

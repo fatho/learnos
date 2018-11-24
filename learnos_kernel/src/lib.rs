@@ -41,7 +41,7 @@ use acpi::AcpiTable;
 use amd64::*;
 use amd64::segments::Ring;
 use amd64::interrupts::idt::{IdtEntry, Idt};
-use amd64::interrupts::apic::{ApicRegisters, LvtTimer, TimerDivisor};
+use amd64::interrupts::apic::{ApicRegisters, LvtTimerEntry, TimerDivisor};
 use amd64::interrupts::ioapic::{IoApicRegisters};
 use kmem::physical::alloc as kmem_alloc;
 use kmem::physical::{PageFrameRegion, PageFrame};
