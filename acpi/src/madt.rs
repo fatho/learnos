@@ -1,7 +1,7 @@
 use amd64::{PhysAddr};
 use amd64::util::Bits;
-use amd64::interrupts::apic::{ApicId, TriggerMode, Polarity};
-use amd64::interrupts::ioapic::IoApicId;
+use amd64::apic::{ApicId, TriggerMode, Polarity};
+use amd64::ioapic::IoApicId;
 
 use super::{AnySdt, SdtHeader, AcpiTable};
 use super::util;

@@ -40,9 +40,9 @@ use core::iter;
 use acpi::AcpiTable;
 use amd64::*;
 use amd64::segments::Ring;
-use amd64::interrupts::idt::{IdtEntry, Idt};
-use amd64::interrupts::apic::{ApicRegisters, TriggerMode, Polarity, LvtTimerEntry, TimerDivisor};
-use amd64::interrupts::ioapic::{IoApicRegisters};
+use amd64::idt::{IdtEntry, Idt};
+use amd64::apic::{ApicRegisters, TriggerMode, Polarity, LvtTimerEntry, TimerDivisor};
+use amd64::ioapic::{IoApicRegisters};
 use kmem::physical::alloc as kmem_alloc;
 use kmem::physical::{PageFrameRegion, PageFrame};
 
@@ -144,7 +144,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     unsafe {
         {
             let mut idt = IDT.lock();
-            let intgate = |handler| IdtEntry::new(interrupts::idt::GateType::INTERRUPT_GATE, selectors::KERNEL_CODE, Some(handler), Ring::RING0, true);
+            let intgate = |handler| IdtEntry::new(amd64::idt::GateType::INTERRUPT_GATE, selectors::KERNEL_CODE, Some(handler), Ring::RING0, true);
             idt[0] = intgate(div_by_zero_handler);
             idt[8] = intgate(df_handler);
             idt[13] = intgate(gpf_handler);
@@ -154,32 +154,32 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
             }
             idt[32] = intgate(test_timer);
             idt[33] = intgate(callable_int);
-            interrupts::idt::load_idt(&*idt);
+            amd64::idt::load_idt(&*idt);
             debug!("IDT loaded");
         }
 
         // default mapping of PIC collides with CPU exceptions
-        interrupts::pic::remap(0x20, 0x28);
+        amd64::pic::remap(0x20, 0x28);
         debug!("PIC IRQs remapped");
 
         // we do not want to receive interrupts from the PIC, because
         // we are soon going to enable the APIC.
-        interrupts::pic::set_masks(0xFF, 0xFF);
+        amd64::pic::set_masks(0xFF, 0xFF);
         debug!("PIC IRQs masked");
 
-        if ! interrupts::apic::supported() {
+        if ! amd64::apic::supported() {
             panic!("APIC not supported")
         }
 
-        info!("BSP APIC ID {:?}", interrupts::apic::local_apic_id());
+        info!("BSP APIC ID {:?}", amd64::apic::local_apic_id());
 
-        if ! interrupts::apic::is_enabled()  {
+        if ! amd64::apic::is_enabled()  {
             info!("APIC support not yet enabled, enabling now");
-            interrupts::apic::set_enabled(true);
-            assert!(interrupts::apic::is_enabled(), "APIC support could not be enabled");
+            amd64::apic::set_enabled(true);
+            assert!(amd64::apic::is_enabled(), "APIC support could not be enabled");
         }
 
-        let apic_base_phys = interrupts::apic::base_address();
+        let apic_base_phys = amd64::apic::base_address();
         let apic_base_virt = DIRECT_MAPPING.phys_to_virt(apic_base_phys);
         APIC.set_base_address(apic_base_virt.as_mut_ptr());
 
@@ -206,7 +206,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
         // The MADT is of particular interest, because it contains information about
         // all the processors and interrupt controllers in the system.
         if let Some(madt) = acpi::Madt::from_any(tbl) {
-            let this_apic = interrupts::apic::local_apic_id();
+            let this_apic = amd64::apic::local_apic_id();
             let mut cpus = CPUS.write();
             let mut ioapics = IOAPICS.write();
             let mut irqs = IRQS.write();
@@ -244,8 +244,6 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
 
             assert!(cpus.count() > 0, "BUG: no CPUs detected");
             assert!(ioapics.count() > 0, "BUG: no I/O APICs detected");
-
-            // TODO: configure IO APIC by reading the interrupt override entires in MADT
         }
     }
 
@@ -260,7 +258,7 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
 
     unsafe {
         interrupts::enable();
-        cpu::hang()
+        loop { amd64::hlt() }
     }
 }
 
@@ -270,6 +268,8 @@ unsafe fn find_acpi_rsdp() -> Option<&'static acpi::Rsdp> {
                              DIRECT_MAPPING.phys_to_virt(PhysAddr(end_phys)));
     find_phys(0xE0000, 0xFFFFF).or(find_phys(0, 1024))
 }
+
+// TODO: write handlers for all CPU exceptions
 
 exception_handler_with_code! {
     fn df_handler(_frame: &interrupts::InterruptFrame, error_code: u64) {

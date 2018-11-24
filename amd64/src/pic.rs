@@ -1,4 +1,4 @@
-use crate::cpu::io;
+use crate::io;
 
 pub const PIC1_CMD: io::PortNumber = io::PortNumber(0x0020);
 pub const PIC1_DATA: io::PortNumber = io::PortNumber(0x0021);
@@ -11,7 +11,7 @@ pub const ICW1_ICW4: u8 = 0x01;
 pub const ICW1_INIT: u8 = 0x10;
 /// Level triggered (edge) mode
 pub const ICW1_LEVEL: u8 = 0x08;
- 
+
 /// 8086/88 (MCS-80/85) mode
 pub const ICW4_8086: u8 = 0x01;
 
@@ -23,7 +23,7 @@ pub unsafe fn remap(pic1_offset: u8, pic2_offset: u8) {
     // ICW2: write new offsets
 	io::outb(PIC1_DATA, pic1_offset);
 	io::outb(PIC2_DATA, pic2_offset);
-    // ICW3: setup master/slave connection 
+    // ICW3: setup master/slave connection
 	io::outb(PIC1_DATA, 1_u8 << 2); // tell master that the slave is at IRQ2
     io::outb(PIC2_DATA, 2); // // tell slave that it's connected to IRQ2 on master
     // ICW4: tell PICs that they're in 8086 mode

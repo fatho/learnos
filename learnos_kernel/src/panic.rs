@@ -6,7 +6,7 @@ use core::fmt::{Write};
 #[cfg(not(test))]
 use crate::vga;
 #[cfg(not(test))]
-use amd64::cpu;
+use amd64::io;
 #[cfg(not(test))]
 use crate::mem::layout;
 
@@ -44,11 +44,11 @@ fn panic(panic_info: &PanicInfo) -> ! {
     };
 
     // Also dump the panic to the serial port.
-    let mut com1 = unsafe { cpu::io::com::SerialPort::new(cpu::io::com::COM1_ADDR) };
+    let mut com1 = unsafe { io::com::SerialPort::new(io::com::COM1_ADDR) };
     writeln!(com1, "{}", panic_info);
 
     unsafe {
         amd64::interrupts::disable();
-        cpu::hang()
+        loop { amd64::hlt() }
     }
 }

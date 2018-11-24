@@ -1,5 +1,6 @@
 use crate::util::Bits;
-use crate::cpu;
+use crate::cpuid;
+use crate::msr;
 use crate::{Alignable, PhysAddr};
 
 use core::sync::atomic::{AtomicPtr, Ordering};
@@ -9,12 +10,12 @@ use core::sync::atomic::{AtomicPtr, Ordering};
 pub struct ApicId(pub u8);
 
 pub fn supported() -> bool {
-    let (_, _, _, edx) = cpu::cpuid(1);
+    let (_, _, _, edx) = cpuid::cpuid(1);
     edx & (1 << 9) != 0
 }
 
 pub fn local_apic_id() -> ApicId {
-    let (_, ebx, _, _) = cpu::cpuid(1);
+    let (_, ebx, _, _) = cpuid::cpuid(1);
     ApicId(((ebx >> 24) & 0xFF) as u8)
 }
 
@@ -24,7 +25,7 @@ const APIC_MSR_ENABLED: u64 = 1 << 11;
 /// Check whether the APIC is enabled.
 pub fn is_enabled() -> bool {
     unsafe {
-        let apic_msr = cpu::read_msr(cpu::MSR_APIC_BASE);
+        let apic_msr = msr::APIC_BASE.read();
         (apic_msr & APIC_MSR_ENABLED) != 0
     }
 }
@@ -32,7 +33,7 @@ pub fn is_enabled() -> bool {
 /// Return the base address of the memory mapped APIC registers.
 pub fn base_address() -> PhysAddr {
     unsafe {
-        let apic_msr = cpu::read_msr(cpu::MSR_APIC_BASE);
+        let apic_msr = msr::APIC_BASE.read();
         PhysAddr((apic_msr & 0xFFFFF000) as usize)
     }
 }
@@ -40,13 +41,13 @@ pub fn base_address() -> PhysAddr {
 /// Enable or disable the APIC. Usually, it is already enabled.
 /// Warning: After disabling the APIC, it usually can only be enabled again after a system reset.
 pub unsafe fn set_enabled(enabled: bool) {
-    let mut apic_msr = cpu::read_msr(cpu::MSR_APIC_BASE);
+    let mut apic_msr = msr::APIC_BASE.read();
     if enabled {
         apic_msr |= APIC_MSR_ENABLED
     } else {
         apic_msr &= ! APIC_MSR_ENABLED
     }
-    cpu::write_msr(cpu::MSR_APIC_BASE, apic_msr)
+    msr::APIC_BASE.write(apic_msr)
 }
 
 /// Interface to the local APIC via the memory mapped registers.

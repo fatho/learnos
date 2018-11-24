@@ -3,8 +3,8 @@ use core::mem;
 use core::ops;
 
 use amd64::PhysAddr;
-use amd64::interrupts::apic::{ApicId, Polarity, TriggerMode};
-use amd64::interrupts::ioapic::IoApicId;
+use amd64::apic::{ApicId, Polarity, TriggerMode};
+use amd64::ioapic::IoApicId;
 
 /// Architectural limit for the number of CPUs in a system.
 pub const MAX_CPU_COUNT: usize = 256;

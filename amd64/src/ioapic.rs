@@ -1,5 +1,5 @@
 use crate::util::Bits;
-use crate::interrupts::apic::{DeliveryStatus, DeliveryMode, TriggerMode, Polarity};
+use crate::apic::{DeliveryStatus, DeliveryMode, TriggerMode, Polarity};
 
 /// The identifier of an IOAPIC.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Copy, Clone)]

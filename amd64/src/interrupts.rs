@@ -1,8 +1,3 @@
-pub mod idt;
-pub mod pic;
-pub mod apic;
-pub mod ioapic;
-
 /// Enable interrupts on the current CPU.
 #[inline]
 pub unsafe fn enable() {
