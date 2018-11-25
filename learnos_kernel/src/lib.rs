@@ -218,7 +218,8 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
                         cpus.insert(smp::CpuInfo {
                             acpi_id: lapic.processor_id(),
                             apic_id: lapic.apic_id(),
-                            is_bsp: this_apic == lapic.apic_id()
+                            is_bsp: this_apic == lapic.apic_id(),
+                            nmi: None
                         });
                     }
                 } else if let Some(ioapic) = entry.io_apic() {
@@ -239,6 +240,19 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
                     // assume ISA defaults when no specific polarity and trigger mode are given
                     irqs[irq].polarity = iso.polarity().unwrap_or(Polarity::HighActive);
                     irqs[irq].trigger_mode = iso.trigger_mode().unwrap_or(TriggerMode::EdgeTriggered);
+                }
+            }
+
+            for nmi in madt.non_maskable_interrupts() {
+                let info = smp::NmiInfo {
+                    lint: nmi.lint(),
+                    polarity: nmi.polarity().unwrap_or(Polarity::HighActive),
+                    trigger_mode: nmi.trigger_mode().unwrap_or(TriggerMode::EdgeTriggered)
+                };
+                if nmi.processor_id() == apic::ApicId::ALL {
+                    cpus.iter_mut().for_each(|cpu| cpu.nmi = Some(info.clone()));
+                } else {
+                    cpus[nmi.processor_id().0].nmi = Some(info);
                 }
             }
 

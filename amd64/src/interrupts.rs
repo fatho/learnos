@@ -1,3 +1,6 @@
+use crate::cmos;
+use crate::io;
+
 /// Enable interrupts on the current CPU.
 #[inline]
 pub unsafe fn enable() {
@@ -8,6 +11,19 @@ pub unsafe fn enable() {
 #[inline]
 pub unsafe fn disable() {
     asm!("cli" : : : : "intel", "volatile")
+}
+
+/// Enable the non-maskable interrupt.
+#[inline]
+pub unsafe fn enable_nmi() {
+    // NMI is controlled by the highest bit of the CMOS select register.
+    io::outb(cmos::SELECT_PORT, io::inb(cmos::SELECT_PORT) & 0x7F);
+}
+
+/// Disable the non-maskable interrupt.
+#[inline]
+pub unsafe fn disable_nmi() {
+    io::outb(cmos::SELECT_PORT, io::inb(cmos::SELECT_PORT) | 0x80);
 }
 
 

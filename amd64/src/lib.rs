@@ -19,6 +19,8 @@ pub mod ioapic;
 pub mod msr;
 pub mod io;
 pub mod cpuid;
+pub mod pit;
+pub mod cmos;
 
 pub use self::align::*;
 pub use self::addr::*;

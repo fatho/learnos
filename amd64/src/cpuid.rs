@@ -1,5 +1,3 @@
-pub mod io;
-
 /// Execute the cpuid instruction after setting eax to the given query.
 #[inline]
 pub fn cpuid(eax: u32) -> (u32, u32, u32, u32) {

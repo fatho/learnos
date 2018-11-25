@@ -1,6 +1,6 @@
 use amd64::{PhysAddr};
 use amd64::util::Bits;
-use amd64::apic::{ApicId, TriggerMode, Polarity};
+use amd64::apic::{ApicId, Lint, TriggerMode, Polarity};
 use amd64::ioapic::IoApicId;
 
 use super::{AnySdt, SdtHeader, AcpiTable};
@@ -80,6 +80,12 @@ impl Madt {
     pub fn interrupt_source_overrides(&self) -> impl Iterator<Item=&InterruptSourceOverride> {
         self.iter()
             .filter_map(|f| f.interrupt_source_override())
+    }
+
+    /// Returns an iterator over all interrupt source overrides.
+    pub fn non_maskable_interrupts(&self) -> impl Iterator<Item=&NonMaskableInterrupt> {
+        self.iter()
+            .filter_map(|f| f.non_maskable_interrupt())
     }
 }
 
@@ -335,4 +341,35 @@ pub struct NonMaskableInterrupt {
 impl NonMaskableInterrupt {
     pub const ENTRY_TYPE: u8 = 4;
 
+    pub fn processor_id(&self) -> ApicId {
+        ApicId(self.processor_id)
+    }
+
+    pub fn trigger_mode(&self) -> Option<TriggerMode> {
+        let flags = self.flags;
+        match flags.get_bits(2..=3) {
+            0b00 => None,
+            0b01 => Some(TriggerMode::EdgeTriggered),
+            0b11 => Some(TriggerMode::LevelTriggered),
+            _ => panic!("Corrupt interrupt source override entry in MADT: {:?}", self),
+        }
+    }
+
+    pub fn polarity(&self) -> Option<Polarity> {
+        let flags = self.flags;
+        match flags.get_bits(2..=3) {
+            0b00 => None,
+            0b01 => Some(Polarity::HighActive),
+            0b11 => Some(Polarity::LowActive),
+            _ => panic!("Corrupt interrupt source override entry in MADT: {:?}", self),
+        }
+    }
+
+    pub fn lint(&self) -> Lint {
+        match self.lint {
+            0 => Lint::Lint0,
+            1 => Lint::Lint1,
+            _ => panic!("Invalid local interrupt input: {}", self.lint)
+        }
+    }
 }

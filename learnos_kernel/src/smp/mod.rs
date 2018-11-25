@@ -3,7 +3,7 @@ use core::mem;
 use core::ops;
 
 use amd64::PhysAddr;
-use amd64::apic::{ApicId, Polarity, TriggerMode};
+use amd64::apic::{ApicId, Lint, Polarity, TriggerMode};
 use amd64::ioapic::IoApicId;
 
 /// Architectural limit for the number of CPUs in a system.
@@ -21,6 +21,15 @@ pub struct CpuInfo {
     pub acpi_id: u8,
     pub apic_id: ApicId,
     pub is_bsp: bool,
+    pub nmi: Option<NmiInfo>,
+}
+
+/// Information about the connection of the Non-Maskable Interrupt to an APIC.
+#[derive(Eq, PartialEq, Clone, Debug)]
+pub struct NmiInfo {
+    pub lint: Lint,
+    pub polarity: Polarity,
+    pub trigger_mode: TriggerMode,
 }
 
 /// Stores information about an IOAPIC.
@@ -86,6 +95,10 @@ macro_rules! info_table {
 
             pub fn iter(&self) -> impl Iterator<Item=&$entry_type> {
                 self.entries[0..self.count].iter().map(|c| &**c)
+            }
+
+            pub fn iter_mut(&mut self) -> impl Iterator<Item=&mut $entry_type> {
+                self.entries[0..self.count].iter_mut().map(|c| &mut **c)
             }
 
             $($extra_fn)*

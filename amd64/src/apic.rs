@@ -9,6 +9,11 @@ use core::sync::atomic::{AtomicPtr, Ordering};
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Copy, Clone)]
 pub struct ApicId(pub u8);
 
+impl ApicId {
+    /// Special APIC id referring to all processors.
+    pub const ALL: ApicId = ApicId(0xFF);
+}
+
 pub fn supported() -> bool {
     let (_, _, _, edx) = cpuid::cpuid(1);
     edx & (1 << 9) != 0
@@ -53,6 +58,12 @@ pub unsafe fn set_enabled(enabled: bool) {
 /// Interface to the local APIC via the memory mapped registers.
 pub struct ApicRegisters(AtomicPtr<u32>);
 
+/// Identifier for the local interrupt inputs of an APIC.
+#[derive(Eq, PartialEq, Copy, Clone, Debug)]
+pub enum Lint {
+    Lint0,
+    Lint1,
+}
 
 macro_rules! lvt_accessor {
     ($getter:ident, $setter:ident, $reg:expr, $entry:tt) => {
@@ -141,6 +152,22 @@ impl ApicRegisters {
     lvt_accessor!(lvt_error, set_lvt_error, Self::LVT_ERROR_REG, LvtTimerEntry);
     lvt_accessor!(lvt_thermal, set_lvt_thermal, Self::LVT_THERMAL_REG, LvtTimerEntry);
     lvt_accessor!(lvt_cmci, set_lvt_cmci, Self::LVT_CMCI_REG, LvtTimerEntry);
+
+    #[inline(always)]
+    pub unsafe fn set_lvt_lint(&self, lint: Lint, lvt: LvtLintEntry) {
+        match lint {
+            Lint::Lint0 => self.set_lvt_lint0(lvt),
+            Lint::Lint1 => self.set_lvt_lint1(lvt)
+        }
+    }
+
+    #[inline(always)]
+    pub unsafe fn lvt_lint(&self, lint: Lint) -> LvtLintEntry {
+        match lint {
+            Lint::Lint0 => self.lvt_lint0(),
+            Lint::Lint1 => self.lvt_lint1()
+        }
+    }
 
     #[inline(always)]
     pub unsafe fn set_timer_divisor(&self, divisor: TimerDivisor) {
