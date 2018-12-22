@@ -61,16 +61,32 @@ pub struct RawData {
     year: u8,
 }
 
-fn interpret_raw_data(raw: RawData, hours: HourFormat, format: ValueFormat) -> ClockTime {
-    let century = if raw.century == 0 { 20 } else { decode_field(format, raw.century) } as u32;
+fn interpret_raw_data(raw: RawData, hour_format: HourFormat, value_format: ValueFormat) -> ClockTime {
+    let century = if raw.century == 0 { 20 } else { decode_field(value_format, raw.century) } as u32;
+    
+    let hours = match hour_format {
+        HourFormat::Hour12 => {
+            let uncorrected = decode_field(value_format, raw.hours.get_bits(0..=6));
+            let is_pm = raw.hours.get_bit(7);
+            if is_pm {
+                (uncorrected + 12) % 24
+            } else {
+                uncorrected
+            }
+        },
+        HourFormat::Hour24 => {
+            decode_field(value_format, raw.hours)
+        }
+    };
+
     ClockTime {
-        format: hours,
-        seconds: decode_field(format, raw.seconds),
-        minutes: decode_field(format, raw.minutes),
-        hours: decode_field(format, raw.hours),
-        day_of_month: decode_field(format, raw.day_of_month),
-        month: decode_field(format, raw.month),
-        year: century * 100 + decode_field(format, raw.year) as u32,
+        format: hour_format,
+        seconds: decode_field(value_format, raw.seconds),
+        minutes: decode_field(value_format, raw.minutes),
+        hours: hours,
+        day_of_month: decode_field(value_format, raw.day_of_month),
+        month: decode_field(value_format, raw.month),
+        year: century * 100 + decode_field(value_format, raw.year) as u32,
     }
 }
 
