@@ -4,13 +4,21 @@ use crate::io;
 /// Enable interrupts on the current CPU.
 #[inline]
 pub unsafe fn enable() {
-    asm!("sti\nnop" : : : : "intel", "volatile")
+    asm!("sti" : : : : "intel", "volatile")
 }
 
 /// Disable interrupts on the current CPU.
 #[inline]
 pub unsafe fn disable() {
     asm!("cli" : : : : "intel", "volatile")
+}
+
+/// Run a callback with interrupts disabled.
+pub unsafe fn uninterruptible<F, R>(callback: F) -> R where F: FnOnce() -> R {
+    disable();
+    let value = callback();
+    enable();
+    value
 }
 
 /// Enable the non-maskable interrupt.

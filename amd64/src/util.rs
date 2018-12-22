@@ -78,6 +78,7 @@ macro_rules! impl_Bits {
     };
 }
 
+impl_Bits!(u8);
 impl_Bits!(u16);
 impl_Bits!(u32);
 impl_Bits!(u64);

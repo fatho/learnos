@@ -271,6 +271,10 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     }
 
     unsafe {
+        amd64::rtc::wait_for_update();
+        let time = amd64::rtc::read_clock();
+        info!("  Time: {:?}", time);
+
         interrupts::enable();
         loop { amd64::hlt() }
     }
