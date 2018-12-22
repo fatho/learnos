@@ -73,10 +73,6 @@ macro_rules! pop_scratch_registers {
     }};
 }
 
-// TODO: reduce code duplication in interrupt handler macros
-
-// TODO: provide interrupt handlers with access to return addres etc, so that they can jump somewhere else if desired
-
 /// Generates a raw interrupt handler
 #[macro_export]
 macro_rules! interrupt_handler_raw {
