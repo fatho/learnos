@@ -1,6 +1,8 @@
 use crate::cmos;
 use crate::util::{Bits};
 
+use core::mem;
+
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ClockTime {
     pub format: HourFormat,
@@ -25,10 +27,19 @@ pub enum HourFormat {
 /// 
 /// Accesses CMOS registers, therefore care must be taken
 /// that no concurrent CMOS accesses happen.
-pub unsafe fn wait_for_update() {
-    // wait for update to start
+pub unsafe fn wait_for_next_update() {
+    // wait for next update to start
     while ! cmos::read_register(registers::STATUS_A).get_bit(7) {}
-    // wait for update to finish
+    // wait for that update to finish
+    wait_for_update_done();
+}
+
+
+/// Wait until there is no RTC update in progress.
+/// 
+/// Accesses CMOS registers, therefore care must be taken
+/// that no concurrent CMOS accesses happen.
+pub unsafe fn wait_for_update_done() {
     while cmos::read_register(registers::STATUS_A).get_bit(7) {}
 }
 
@@ -43,6 +54,29 @@ pub unsafe fn read_clock() -> ClockTime {
     interpret_raw_data(raw, hour_format, value_format)
 }
 
+/// Read a consistent clock time from the RTC by looping
+/// until the value no longer changes.
+/// 
+/// Accesses CMOS registers, therefore care must be taken
+/// that no concurrent CMOS accesses happen.
+pub unsafe fn read_clock_consistent() -> ClockTime {
+    let has_century = false;
+    let (hour_format, value_format) = read_rtc_format();
+
+    let next = || { 
+        wait_for_update_done();
+        read_rtc_raw(has_century)
+    };
+    
+    let mut cur = next();
+    while {
+        let prev = mem::replace(&mut cur, next());
+        cur != prev
+    } { };
+
+    interpret_raw_data(cur, hour_format, value_format)
+}
+
 /// Distinguishes the two encoding possiblities for the RTC.
 #[derive(Debug, Eq, PartialEq, Copy, Clone)]
 enum ValueFormat {
@@ -51,6 +85,7 @@ enum ValueFormat {
 }
 
 /// Raw data read from the RTC.
+#[derive(Debug, Eq, PartialEq, Clone)]
 pub struct RawData {
     seconds: u8,
     minutes: u8,
