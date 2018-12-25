@@ -271,6 +271,9 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     }
 
     unsafe {
+        let time = amd64::rtc::read_clock_consistent();
+        info!("  Time: {:?}", time);
+
         interrupts::enable();
         loop { amd64::hlt() }
     }

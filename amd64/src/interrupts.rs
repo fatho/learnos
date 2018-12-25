@@ -4,13 +4,21 @@ use crate::io;
 /// Enable interrupts on the current CPU.
 #[inline]
 pub unsafe fn enable() {
-    asm!("sti\nnop" : : : : "intel", "volatile")
+    asm!("sti" : : : : "intel", "volatile")
 }
 
 /// Disable interrupts on the current CPU.
 #[inline]
 pub unsafe fn disable() {
     asm!("cli" : : : : "intel", "volatile")
+}
+
+/// Run a callback with interrupts disabled.
+pub unsafe fn uninterruptible<F, R>(callback: F) -> R where F: FnOnce() -> R {
+    disable();
+    let value = callback();
+    enable();
+    value
 }
 
 /// Enable the non-maskable interrupt.
@@ -72,10 +80,6 @@ macro_rules! pop_scratch_registers {
         asm!("pop rax" : : : : "intel", "volatile");
     }};
 }
-
-// TODO: reduce code duplication in interrupt handler macros
-
-// TODO: provide interrupt handlers with access to return addres etc, so that they can jump somewhere else if desired
 
 /// Generates a raw interrupt handler
 #[macro_export]

@@ -5,6 +5,7 @@
 extern crate static_assertions;
 #[macro_use]
 extern crate log;
+extern crate spin;
 
 mod align;
 mod addr;
@@ -21,6 +22,7 @@ pub mod io;
 pub mod cpuid;
 pub mod pit;
 pub mod cmos;
+pub mod rtc;
 
 pub use self::align::*;
 pub use self::addr::*;
