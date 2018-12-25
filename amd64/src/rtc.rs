@@ -5,20 +5,12 @@ use core::mem;
 
 #[derive(Debug, Eq, PartialEq, Clone)]
 pub struct ClockTime {
-    pub format: HourFormat,
     pub seconds: u8,
     pub minutes: u8,
     pub hours: u8,
     pub day_of_month: u8,
     pub month: u8,
     pub year: u32,
-}
-
-/// Distinguishes between 12/24 hour clock.
-#[derive(Debug, Eq, PartialEq, Copy, Clone)]
-pub enum HourFormat {
-    Hour12,
-    Hour24,
 }
 
 /// Wait for the next update of the RTC to happen.
@@ -69,10 +61,10 @@ pub unsafe fn read_clock_consistent() -> ClockTime {
     };
     
     let mut cur = next();
-    while {
+    loop {
         let prev = mem::replace(&mut cur, next());
-        cur != prev
-    } { };
+        if cur == prev { break; }
+    }
 
     interpret_raw_data(cur, hour_format, value_format)
 }
@@ -84,9 +76,16 @@ enum ValueFormat {
     Binary
 }
 
+/// Distinguishes between 12/24 hour clock.
+#[derive(Debug, Eq, PartialEq, Copy, Clone)]
+enum HourFormat {
+    Hour12,
+    Hour24,
+}
+
 /// Raw data read from the RTC.
 #[derive(Debug, Eq, PartialEq, Clone)]
-pub struct RawData {
+struct RawData {
     seconds: u8,
     minutes: u8,
     hours: u8,
@@ -115,7 +114,6 @@ fn interpret_raw_data(raw: RawData, hour_format: HourFormat, value_format: Value
     };
 
     ClockTime {
-        format: hour_format,
         seconds: decode_field(value_format, raw.seconds),
         minutes: decode_field(value_format, raw.minutes),
         hours: hours,
