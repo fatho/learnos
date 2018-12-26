@@ -54,6 +54,7 @@ pub mod vga;
 pub mod panic;
 pub mod mem;
 pub mod smp;
+pub mod kaal;
 
 use self::mem::layout::DIRECT_MAPPING;
 
