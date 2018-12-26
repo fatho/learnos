@@ -70,7 +70,7 @@ pub fn print_multiboot(mb2: &multiboot2::Multiboot2Info) {
     info!("MB2 info at {:p} size {}", mb2 as *const multiboot2::Multiboot2Info, mb2.size());
 
     for tag in mb2.modules() {
-        info!("  Module: start={:?} end={:?} cmd={:?}", tag.mod_start(), tag.mod_end(), tag.cmd_line());
+        info!("  Module: start={:p} end={:p} cmd={:?}", tag.mod_start(), tag.mod_end(), tag.cmd_line());
     }
 
     for mmap in mb2.memory_map() {
