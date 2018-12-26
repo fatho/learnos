@@ -36,7 +36,7 @@ impl PageFrameTable {
     /// Marks a whole region as reserved
     pub fn mark_allocated(&mut self, region: PageFrameRegion) {
         for entry in self.region_iter_mut(region) {
-            assert!(entry.state == PageFrameState::Free, "cannot allocate non-free region");
+            assert!(entry.state != PageFrameState::Reserved, "cannot allocate reserved region");
             entry.state = PageFrameState::Allocated;
         }
     }
@@ -44,17 +44,21 @@ impl PageFrameTable {
     /// Marks a whole region as reserved
     pub fn mark_reserved(&mut self, region: PageFrameRegion) {
         for entry in self.region_iter_mut(region) {
-            assert!(entry.state == PageFrameState::Free, "cannot reserve non-free region");
+            assert!(entry.state != PageFrameState::Allocated, "cannot reserve allocated region");
             entry.state = PageFrameState::Reserved;
         }
     }
 
-    fn index<'a>(&'a self, idx: usize) -> &'a PageFrameInfo {
+    pub fn length(&self) -> usize {
+        self.length
+    }
+
+    pub fn index<'a>(&'a self, idx: usize) -> &'a PageFrameInfo {
         assert!(idx < self.length);
         unsafe { &*self.ptr.add(idx) }
     }
 
-    fn index_mut<'a>(&'a mut self, idx: usize) -> &'a mut PageFrameInfo {
+    pub fn index_mut<'a>(&'a mut self, idx: usize) -> &'a mut PageFrameInfo {
         assert!(idx < self.length);
         unsafe { &mut *self.ptr.add(idx) }
     }
@@ -97,5 +101,5 @@ pub enum PageFrameState {
 }
 
 pub struct PageFrameInfo {
-    state: PageFrameState
+    pub state: PageFrameState
 }

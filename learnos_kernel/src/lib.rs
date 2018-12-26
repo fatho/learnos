@@ -44,6 +44,7 @@ use amd64::idt::{IdtEntry, Idt};
 use amd64::apic::{ApicRegisters, TriggerMode, Polarity, LvtTimerEntry, TimerDivisor};
 use amd64::ioapic::{IoApicRegisters};
 use kmem::physical::{PageFrameRegion, PageFrame};
+use kmem::physical::alloc::PageFrameAllocator;
 use kmem::physical::mgmt::{PageFrameTable};
 
 #[macro_use]
@@ -114,7 +115,14 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
     let mb2: &multiboot2::Multiboot2Info = unsafe { &*DIRECT_MAPPING.phys_to_virt(args.multiboot_start).as_ptr() };
     diagnostics::print_multiboot(&mb2);
 
-    let mut page_frame_table = unsafe { initialize_page_frame_table(args, mb2) };
+    let page_frame_table = unsafe { initialize_page_frame_table(args, mb2) };
+    let mut pfa = kmem::physical::alloc::SlowPageFrameAllocator::new(page_frame_table);
+
+    unsafe {
+        let p = pfa.alloc_region(32).unwrap();
+        debug!("test {:?}", p);
+        pfa.free_region(p);
+    }
 
     // TODO: setup allocator
 
