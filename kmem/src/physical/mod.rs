@@ -1,4 +1,5 @@
 use amd64::{Alignable, PhysAddr};
+use core::mem;
 use core::ops;
 use crate::{PAGE_SIZE, PAGE_ALIGN_BITS};
 
@@ -41,6 +42,46 @@ impl ops::Add<usize> for PageFrame {
 impl ops::AddAssign<usize> for PageFrame {
     fn add_assign(&mut self, rhs: usize) {
         self.0 += rhs;
+    }
+}
+
+impl ops::Sub<usize> for PageFrame {
+    type Output = PageFrame;
+
+    fn sub(self, rhs: usize) -> PageFrame {
+        PageFrame(self.0 - rhs)
+    }
+}
+
+impl ops::SubAssign<usize> for PageFrame {
+    fn sub_assign(&mut self, rhs: usize) {
+        self.0 -= rhs;
+    }
+}
+
+impl core::iter::Step for PageFrame {
+    fn steps_between(start: &Self, end: &Self) -> Option<usize> {
+        Some(end.0 - start.0)
+    }
+
+    fn replace_one(&mut self) -> Self {
+        mem::replace(self, PageFrame(1))
+    }
+
+    fn replace_zero(&mut self) -> Self {
+        mem::replace(self, PageFrame(0))
+    }
+
+    fn add_one(&self) -> Self {
+        *self + 1
+    }
+
+    fn sub_one(&self) -> Self {
+        *self - 1
+    }
+
+    fn add_usize(&self, n: usize) -> Option<Self> {
+        self.0.checked_add(n).map(|i| PageFrame(i))
     }
 }
 

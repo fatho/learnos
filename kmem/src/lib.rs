@@ -1,5 +1,6 @@
 #![cfg_attr(not(test), no_std)]
 #![feature(asm)]
+#![feature(step_trait)]
 
 #[macro_use]
 extern crate bitflags;

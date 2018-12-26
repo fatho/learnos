@@ -27,18 +27,18 @@ impl SlowPageFrameAllocator {
 impl PageFrameAllocator for SlowPageFrameAllocator {
     unsafe fn alloc(&mut self) -> Option<PageFrame> {
         // search first free page
-        for i in 0 .. self.page_frame_table.length() {
-            let entry = self.page_frame_table.index_mut(i);
+        for frame in PageFrame(0) .. self.page_frame_table.upper_bound() {
+            let entry = &mut self.page_frame_table[frame];
             if entry.state == PageFrameState::Free {
                 entry.state = PageFrameState::Allocated;
-                return Some(PageFrame(i))
+                return Some(frame)
             }
         }
         return None
     }
 
     unsafe fn free(&mut self, frame: PageFrame) {
-        let entry = self.page_frame_table.index_mut(frame.0);
+        let entry = &mut self.page_frame_table[frame];
         assert_eq!(entry.state, PageFrameState::Allocated);
         entry.state = PageFrameState::Free;
     }
@@ -46,10 +46,10 @@ impl PageFrameAllocator for SlowPageFrameAllocator {
     
     unsafe fn alloc_region(&mut self, page_count: usize) -> Option<PageFrameRegion> {
         // search first free region of that size
-        let mut cur = 0;
+        let mut cur = PageFrame(0);
         let mut free_count = 0;
-        while cur < self.page_frame_table.length() && free_count < page_count {
-            if self.page_frame_table.index(cur).state == PageFrameState::Free {
+        while cur < self.page_frame_table.upper_bound() && free_count < page_count {
+            if self.page_frame_table[cur].state == PageFrameState::Free {
                 free_count += 1;
             } else {
                 free_count = 0;
@@ -58,11 +58,11 @@ impl PageFrameAllocator for SlowPageFrameAllocator {
         }
         if free_count == page_count {
             for i in cur - free_count .. cur {
-                self.page_frame_table.index_mut(i).state = PageFrameState::Allocated;
+                self.page_frame_table[i].state = PageFrameState::Allocated;
             }
             Some(PageFrameRegion {
-                start: PageFrame(cur - page_count),
-                end: PageFrame(cur)
+                start: cur - page_count,
+                end: cur
             })
         } else {
             None
@@ -70,8 +70,8 @@ impl PageFrameAllocator for SlowPageFrameAllocator {
     }
     
     unsafe fn free_region(&mut self, region: PageFrameRegion) {
-        for i in region.start.0 .. region.end.0 {
-            let entry = self.page_frame_table.index_mut(i);
+        for frame in region.start .. region.end {
+            let entry = &mut self.page_frame_table[frame];
             assert_eq!(entry.state, PageFrameState::Allocated);
             entry.state = PageFrameState::Free;
         }
