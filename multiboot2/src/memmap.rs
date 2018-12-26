@@ -95,6 +95,10 @@ impl Region {
         self.base_addr
     }
 
+    pub fn end_addr(&self) -> PhysAddr {
+        self.base_addr + self.length()
+    }
+
     pub fn length(&self) -> usize {
         self.length as usize
     }

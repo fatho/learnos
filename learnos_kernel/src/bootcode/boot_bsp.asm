@@ -9,6 +9,8 @@ extern vga_buffer
 extern stack_end
 extern kernel_start
 extern kernel_end
+extern bootmem_start
+extern bootmem_end
 extern page_tbl_pml4
 extern page_tbl_pdp_low
 extern page_tbl_pdp_high
@@ -73,6 +75,8 @@ kernel_main_trampoline:
     mov eax, dword [rbx] ; read length field of multiboot header
     add rax, rbx
     mov qword [rsp+24], rax
+    mov qword [rsp+32], bootmem_start
+    mov qword [rsp+40], bootmem_end
     ; pass pointer to that structure to the kernel
     mov rdi, rsp
     ; reset all other registers

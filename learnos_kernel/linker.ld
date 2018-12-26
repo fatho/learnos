@@ -8,6 +8,8 @@ SECTIONS
 
     . = 4K;
 
+    bootmem_start = .;
+
     .bootcode ALIGN(4K) :
     {   
         KEEP(*(.multiboot2))
@@ -33,6 +35,8 @@ SECTIONS
         . += 8K;
         stack_end = .;
     }
+
+    bootmem_end = .;
 
     /* Kernel starts at this virtual address.  */
     /* Physically, it should be loaded at 1M */

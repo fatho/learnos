@@ -3,11 +3,12 @@ use core::ops;
 use crate::{PAGE_SIZE, PAGE_ALIGN_BITS};
 
 pub mod alloc;
+pub mod mgmt;
 
 /// Number of a physical page frame, counted from the start.
 /// The first page frame at physical address 0x0 has number zero.
 #[derive(Eq, PartialEq, Ord, PartialOrd, Debug, Copy, Clone)]
-pub struct PageFrame(usize);
+pub struct PageFrame(pub usize);
 
 impl PageFrame {
     /// Return the next page frame starting at or above the given physical address.
