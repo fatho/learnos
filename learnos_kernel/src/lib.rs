@@ -110,20 +110,39 @@ pub extern "C" fn kernel_main(args: &KernelArgs) -> ! {
         .map(|()| log::set_max_level(log::LevelFilter::Trace))
         .unwrap();
 
-    debug!("VGA initialized");
+    debug!("Logging initialized");
 
     // parse multiboot info
     let mb2: &multiboot2::Multiboot2Info = unsafe { &*DIRECT_MAPPING.phys_to_virt(args.multiboot_start).as_ptr() };
     diagnostics::print_multiboot(&mb2);
 
-    let page_frame_table = unsafe { initialize_page_frame_table(args, mb2) };
-    let mut pfa = kmem::physical::alloc::SlowPageFrameAllocator::new(page_frame_table);
+    // prepare memory subsystem
+    let memory_map = mb2.memory_map().expect("Bootloader did not provide memory map")
+        .regions()
+        .map(|r| {
+            let range = PhysAddrRange::new(r.base_addr(), r.length());
+            kaal::mem::PhysicalMemoryRegion {
+                frames: if r.is_available() {
+                    PageFrameRegion::new_included_in(&range)
+                } else {
+                    PageFrameRegion::new_including(&range)
+                },
+                available: r.is_available(),
+        }});
 
-    unsafe {
-        let p = pfa.alloc_region(32).unwrap();
-        debug!("test {:?}", p);
-        pfa.free_region(p);
-    }
+    let memory_layout = kaal::mem::PhysicalMemoryLayout {
+        kernel_memory: PhysAddrRange::from_bounds(args.kernel_start, args.kernel_end),
+        multiboot_memory: PhysAddrRange::from_bounds(args.multiboot_start, args.multiboot_end),
+        boot_memory: PhysAddrRange::from_bounds(args.bootmem_start, args.bootmem_end),
+        heap_start: mb2.modules().map(|m| m.mod_end())
+            .chain(iter::once(args.kernel_end))
+            .chain(iter::once(args.multiboot_end))
+            .max().unwrap_or(PhysAddr(0)),
+    };
+
+    let mem_sys = unsafe { 
+        kaal::mem::MemorySubsystem::new(DIRECT_MAPPING.clone(), &memory_layout, memory_map)
+    };
 
     // TODO: setup allocator
 
@@ -275,83 +294,6 @@ unsafe fn find_acpi_rsdp() -> Option<&'static acpi::Rsdp> {
             acpi::Rsdp::find(DIRECT_MAPPING.phys_to_virt(PhysAddr(start_phys)),
                              DIRECT_MAPPING.phys_to_virt(PhysAddr(end_phys)));
     find_phys(0xE0000, 0xFFFFF).or(find_phys(0, 1024))
-}
-
-unsafe fn initialize_page_frame_table(kernel_args: &KernelArgs, mb2: &multiboot2::Multiboot2Info) -> PageFrameTable {
-
-    // find memory map
-    let memory_map = mb2.memory_map().expect("Bootloader did not provide memory map.");
-
-    // compute start of physical heap
-    let heap_start = mb2.modules().map(|m| m.mod_end())
-        .chain(iter::once(kernel_args.kernel_end))
-        .chain(iter::once(kernel_args.multiboot_end))
-        .max().unwrap_or(PhysAddr(0));
-
-    let heap_start_frame = PageFrame::next_above(heap_start);
-
-    debug!("[kmem] first frame = {:p}", heap_start_frame.start_address());
-
-    // Compute initial allocation regions: all available RAM regions, rounded down to page sizes,
-    // and above the important kernel data.
-    let available_regions = memory_map.regions()
-        .filter(|r| r.is_available())
-        .map(|r| PageFrameRegion::new_included_in(r.base_addr(), r.base_addr() + r.length()))
-        .map(|r| PageFrameRegion {
-            start: cmp::max(r.start, heap_start_frame),
-            end: r.end
-        })
-        .filter(|r| ! r.is_empty());
-
-    // compute size required size of page frame table
-    let page_frame_count = memory_map.regions()
-        .map(|r| PageFrame::next_above(r.end_addr()).0)
-        .max().unwrap_or(0);
-    
-    let page_frame_table_size = PageFrameTable::required_size_bytes(page_frame_count);
-
-    debug!("[kmem] #pfa={} tblsize={} B", page_frame_count, page_frame_table_size);
-
-    // manually allocate page frame table
-    let page_frame_table_addr = available_regions.clone()
-        .find(|r| r.length() * kmem::PAGE_SIZE >= page_frame_table_size)
-        .map(|r| r.start.start_address())
-        .expect("cannot allocate page frame table");
-
-    debug!("[kmem] tbladdr={:p}", page_frame_table_addr);
-
-    let mut page_frame_table =
-        PageFrameTable::from_addr(
-            DIRECT_MAPPING.phys_to_virt(page_frame_table_addr),
-            page_frame_count
-        );
-
-    // mark all BIOS reserved areas
-    memory_map.regions()
-        .filter(|r| ! r.is_available())
-        .map(|r| PageFrameRegion::new_including(r.base_addr(), r.base_addr() + r.length()))
-        .for_each(|r| page_frame_table.mark_reserved(r));
-
-    // mark page frame table as allocated    
-    page_frame_table.mark_allocated(PageFrameRegion::new_including(
-        page_frame_table_addr, page_frame_table_addr + page_frame_table_size));
-
-    // mark multiboot area as allocated
-    page_frame_table.mark_allocated(PageFrameRegion::new_including(
-        kernel_args.multiboot_start, kernel_args.multiboot_end));
-    for m in mb2.modules() {
-        page_frame_table.mark_allocated(PageFrameRegion::new_including(m.mod_start(), m.mod_end()));
-    }
-
-    // mark kernel area as allocated
-    page_frame_table.mark_allocated(PageFrameRegion::new_including(
-        kernel_args.kernel_start, kernel_args.kernel_end));
-
-    // mark boot memory area as allocated
-    page_frame_table.mark_allocated(PageFrameRegion::new_including(
-        kernel_args.bootmem_start, kernel_args.bootmem_end));
-
-    page_frame_table
 }
 
 // TODO: write handlers for all CPU exceptions

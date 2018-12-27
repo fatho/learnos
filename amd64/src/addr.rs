@@ -28,13 +28,21 @@ impl VirtAddr {
 /// An address range of either physical or virtual memory locations.
 #[derive(Debug, Clone, Eq, PartialEq)]
 pub struct AddrRange<Addr> {
-    pub start: Addr,
-    pub length: usize
+    start: Addr,
+    length: usize
 }
 
 impl<Addr> AddrRange<Addr> where
     Addr: ops::Add<usize, Output=Addr> + ops::Sub<Addr, Output=usize> + Copy + PartialOrd
 {
+    pub fn new(start: Addr, len: usize) -> AddrRange<Addr> {
+        AddrRange {
+            start: start,
+            length: len
+        }
+    }
+
+    /// Create a physical address range from an included start and an excluded end address.
     pub fn from_bounds(start: Addr, end: Addr) -> AddrRange<Addr> {
         AddrRange {
             start: start,
@@ -42,8 +50,16 @@ impl<Addr> AddrRange<Addr> where
         }
     }
 
+    pub fn start(&self) -> Addr {
+        self.start
+    }
+
     pub fn end(&self) -> Addr {
         self.start + self.length
+    }
+
+    pub fn length(&self) -> usize {
+        self.length
     }
 }
 

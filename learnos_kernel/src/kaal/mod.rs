@@ -1,9 +1,9 @@
 //! KaaL - Kernel as a Library
 
 pub mod cmdline;
+pub mod mem;
 
 pub struct Kernel {
-
 }
 
 impl Kernel {
@@ -11,8 +11,6 @@ impl Kernel {
     /// 
     /// This must be called first, before any AP initializations are run.
     pub fn init_bsp() {
-        // TODO: initialize logging
-
         // TODO: read multiboot
 
         // TODO: initialize memory allocation

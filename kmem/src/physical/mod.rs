@@ -1,4 +1,4 @@
-use amd64::{Alignable, PhysAddr};
+use amd64::{Alignable, PhysAddr, PhysAddrRange};
 use core::mem;
 use core::ops;
 use crate::{PAGE_SIZE, PAGE_ALIGN_BITS};
@@ -96,18 +96,18 @@ pub struct PageFrameRegion {
 
 impl PageFrameRegion {
     /// Construct the largest page frame region that is included in the given physical memory region.
-    pub fn new_included_in(start: PhysAddr, end: PhysAddr) -> PageFrameRegion {
+    pub fn new_included_in(range: &PhysAddrRange) -> PageFrameRegion {
         PageFrameRegion {
-            start: PageFrame(start.align_up(PAGE_SIZE).0 >> PAGE_ALIGN_BITS),
-            end: PageFrame(end.align_down(PAGE_SIZE).0 >> PAGE_ALIGN_BITS)
+            start: PageFrame(range.start().align_up(PAGE_SIZE).0 >> PAGE_ALIGN_BITS),
+            end: PageFrame(range.end().align_down(PAGE_SIZE).0 >> PAGE_ALIGN_BITS)
         }
     }
     /// Construct the smallest page frame region that is fully including the given physical memory region.
-    pub fn new_including(start: PhysAddr, end: PhysAddr) -> PageFrameRegion {
-        let end_base = end.0 >> PAGE_ALIGN_BITS;
-        let end_offset = if end.0 & (PAGE_SIZE - 1) != 0 { 1} else { 0 };
+    pub fn new_including(range: &PhysAddrRange) -> PageFrameRegion {
+        let end_base = range.end().0 >> PAGE_ALIGN_BITS;
+        let end_offset = if range.end().0 & (PAGE_SIZE - 1) != 0 { 1 } else { 0 };
         PageFrameRegion {
-            start: PageFrame(start.align_down(PAGE_SIZE).0 >> PAGE_ALIGN_BITS),
+            start: PageFrame(range.start().align_down(PAGE_SIZE).0 >> PAGE_ALIGN_BITS),
             end: PageFrame(end_base + end_offset)
         }
     }
@@ -128,7 +128,7 @@ impl PageFrameRegion {
 
 #[cfg(test)]
 mod test {
-    use amd64::{PhysAddr};
+    use amd64::{PhysAddr, PhysAddrRange};
     use super::PageFrameRegion;
 
     #[test]
@@ -137,25 +137,25 @@ mod test {
         let b = PhysAddr(0x4EF0);
         let c = PhysAddr(0x7FFF);
 
-        let in_ab = PageFrameRegion::new_included_in(a, b);
+        let in_ab = PageFrameRegion::new_included_in(&PhysAddrRange::from_bounds(a, b));
         assert!(in_ab.is_empty(), "in_ab = {:?}", in_ab);
 
-        let in_ac = PageFrameRegion::new_included_in(a, c);
+        let in_ac = PageFrameRegion::new_included_in(&PhysAddrRange::from_bounds(a, c));
         assert!(!in_ac.is_empty(), "in_ac = {:?}", in_ac);
         assert!(in_ac.length() == 2, "in_ac = {:?}", in_ac);
         assert!(in_ac.start.0 == 5 && in_ac.end.0 == 7, "in_ac = {:?}", in_ac);
 
-        let around_ab = PageFrameRegion::new_including(a, b);
+        let around_ab = PageFrameRegion::new_including(&PhysAddrRange::from_bounds(a, b));
         assert!(!around_ab.is_empty(), "around_ab = {:?}", around_ab);
         assert!(around_ab.length() == 1, "around_ab = {:?}", around_ab);
         assert!(around_ab.start.0 == 4 && around_ab.end.0 == 5, "around_ab = {:?}", around_ab);
 
-        let around_ac = PageFrameRegion::new_including(a, c);
+        let around_ac = PageFrameRegion::new_including(&PhysAddrRange::from_bounds(a, c));
         assert!(!around_ac.is_empty(), "around_ac = {:?}", around_ac);
         assert!(around_ac.length() == 4, "around_ac = {:?}", around_ac);
         assert!(around_ac.start.0 == 4 && around_ac.end.0 == 8, "around_ac = {:?}", around_ac);
 
-        let whole_mem = PageFrameRegion::new_including(PhysAddr(0), PhysAddr(0xFFFFFFFFFFFFFFFF));
+        let whole_mem = PageFrameRegion::new_including(&PhysAddrRange::from_bounds(PhysAddr(0), PhysAddr(0xFFFFFFFFFFFFFFFF)));
         assert!(!whole_mem.is_empty());
         assert_eq!(whole_mem.length(), 0x0010_0000_0000_0000)
     }

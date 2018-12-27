@@ -33,19 +33,23 @@ impl PageFrameTable {
         }
     }
 
-    /// Marks a whole region as reserved
+    /// Marks a whole region as reserved. Only changes frames in that region that are
+    /// currently marked as free.
     pub fn mark_allocated(&mut self, region: PageFrameRegion) {
         for entry in self.region_iter_mut(region) {
-            assert!(entry.state != PageFrameState::Reserved, "cannot allocate reserved region");
-            entry.state = PageFrameState::Allocated;
+            if entry.state == PageFrameState::Free {
+                entry.state = PageFrameState::Allocated;
+            }
         }
     }
 
-    /// Marks a whole region as reserved
+    /// Marks a whole region as reserved. Only changes frames in that region that are
+    /// currently marked as free.
     pub fn mark_reserved(&mut self, region: PageFrameRegion) {
         for entry in self.region_iter_mut(region) {
-            assert!(entry.state != PageFrameState::Allocated, "cannot reserve allocated region");
-            entry.state = PageFrameState::Reserved;
+            if entry.state == PageFrameState::Free {
+                entry.state = PageFrameState::Reserved;
+            }
         }
     }
 
