@@ -25,6 +25,31 @@ impl VirtAddr {
     }
 }
 
+/// An address range of either physical or virtual memory locations.
+#[derive(Debug, Clone, Eq, PartialEq)]
+pub struct AddrRange<Addr> {
+    pub start: Addr,
+    pub length: usize
+}
+
+impl<Addr> AddrRange<Addr> where
+    Addr: ops::Add<usize, Output=Addr> + ops::Sub<Addr, Output=usize> + Copy + PartialOrd
+{
+    pub fn from_bounds(start: Addr, end: Addr) -> AddrRange<Addr> {
+        AddrRange {
+            start: start,
+            length: if end < start { 0 } else { end - start },
+        }
+    }
+
+    pub fn end(&self) -> Addr {
+        self.start + self.length
+    }
+}
+
+pub type PhysAddrRange = AddrRange<PhysAddr>;
+pub type VirtAddrRange = AddrRange<VirtAddr>;
+
 macro_rules! impl_addr_arith {
     ($addr:tt) => {
         impl Alignable for $addr {
@@ -68,6 +93,14 @@ macro_rules! impl_addr_arith {
         impl ops::SubAssign<usize> for $addr {
             fn sub_assign(&mut self, other: usize) {
                 self.0 -= other;
+            }
+        }
+
+        impl ops::Sub<$addr> for $addr {
+            type Output = usize;
+
+            fn sub(self, other: $addr) -> Self::Output {
+                self.0 - other.0
             }
         }
     };
