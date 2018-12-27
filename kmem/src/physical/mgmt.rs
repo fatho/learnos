@@ -1,6 +1,7 @@
 ///! Functionality for managing physical memory pages.
 
 use crate::physical::{PageFrame, PageFrameRegion};
+use crate::KFixedVec;
 
 use core::mem;
 use core::ops::{Index, IndexMut};
@@ -8,8 +9,7 @@ use core::ops::{Index, IndexMut};
 use amd64::VirtAddr;
 
 pub struct PageFrameTable {
-    ptr: *mut PageFrameInfo,
-    length: usize,
+    data: KFixedVec<PageFrameInfo>,
 }
 
 impl PageFrameTable {
@@ -22,15 +22,14 @@ impl PageFrameTable {
     /// Create a `PageFrameTable` at a given location and initialize all entries marking
     /// them as free.
     pub unsafe fn from_addr(addr: VirtAddr, num_page_frames: usize) -> PageFrameTable {
-        let ptr: *mut PageFrameInfo = addr.as_mut_ptr();
-        for i in 0..num_page_frames {
-            ptr.add(i).write(PageFrameInfo {
+        let mut data = KFixedVec::from_raw_uninitialized(addr.as_mut_ptr(), num_page_frames);
+        for _ in 0..num_page_frames {
+            data.push(PageFrameInfo {
                 state: PageFrameState::Free,
             });
         }
         PageFrameTable {
-            ptr: ptr,
-            length: num_page_frames,
+            data: data
         }
     }
 
@@ -51,12 +50,11 @@ impl PageFrameTable {
     }
 
     pub fn upper_bound(&self) -> PageFrame {
-        PageFrame(self.length)
+        PageFrame(self.data.len())
     }
 
-    fn region_iter_mut<'a>(&'a mut self, region: PageFrameRegion) -> impl Iterator<Item=&'a mut PageFrameInfo> {
-        assert!(region.start.0 < self.length && region.end.0 <= self.length);
-        (region.start.0 .. region.end.0).into_iter().map(move |i| unsafe { &mut *self.ptr.add(i) } )
+    fn region_iter_mut(& mut self, region: PageFrameRegion) -> impl Iterator<Item=& mut PageFrameInfo> {
+        self.data.as_slice_mut()[region.start.0 .. region.end.0].iter_mut()
     }
 
     pub fn stats(&self) -> PageFrameStats {
@@ -69,7 +67,7 @@ impl PageFrameTable {
             }
         }
         PageFrameStats {
-            total_count: self.length,
+            total_count: self.data.len(),
             reserved_count: reserved,
             allocated_count: alloced,
         }
@@ -80,15 +78,13 @@ impl Index<PageFrame> for PageFrameTable {
     type Output = PageFrameInfo;
 
     fn index<'a>(&'a self, frame: PageFrame) -> &'a PageFrameInfo {
-        assert!(frame.0 < self.length);
-        unsafe { &*self.ptr.add(frame.0) }
+        &self.data[frame.0]
     }
 }
 
 impl IndexMut<PageFrame> for PageFrameTable {
     fn index_mut<'a>(&'a mut self, frame: PageFrame) -> &'a mut PageFrameInfo {
-        assert!(frame.0 < self.length);
-        unsafe { &mut *self.ptr.add(frame.0) }
+        &mut self.data[frame.0]
     }
 }
 
