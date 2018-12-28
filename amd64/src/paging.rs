@@ -1,4 +1,6 @@
-use crate::PhysAddr;
+use crate::{PhysAddr, VirtAddr};
+
+use core::ops::{Index, IndexMut};
 
 /// An entry in a page table.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -99,14 +101,48 @@ pub struct PageTable {
 }
 assert_eq_size!(page_table_size; PageTable, [u64; 512]);
 
-impl PageTable {
-    pub fn entry(&self, idx: usize) -> &PageTableEntry {
+impl Index<usize> for PageTable {
+    type Output = PageTableEntry;
+    
+    fn index(&self, idx: usize) -> &Self::Output {
         &self.entries[idx]
     }
+}
 
-    pub fn entry_mut(&mut self, idx: usize) -> &mut PageTableEntry {
+impl IndexMut<usize> for PageTable {
+    fn index_mut(&mut self, idx: usize) -> &mut Self::Output {
         &mut self.entries[idx]
     }
+}
+
+/// Invalidate the TLB entry for the page containing the given virtual address.
+#[inline(always)]
+pub unsafe fn invalidate_tlb_address(vaddr: VirtAddr) {
+    asm!("invlpg [$0]" : : "r"(vaddr.0) : : "intel", "volatile")
+}
+
+/// Invalidate all TLB entries.
+#[inline(always)]
+pub unsafe fn invalidate_tlb() {
+    asm!("mov cr3, rax
+          mov rax, cr3" : : : "rax" : "intel", "volatile")
+}
+
+/// Set the current root page table given its physical address.
+/// The address must be page-aligned.
+#[inline(always)]
+pub unsafe fn set_root_table(root_table: PhysAddr) {    
+    asm!("mov $0, cr3" : : "r"(root_table.0) : : "intel", "volatile");
+}
+
+/// Get the physical address of the current root page table.
+#[inline(always)]
+pub unsafe fn get_root_table() -> PhysAddr {
+    let cr3: usize;
+    asm!("mov cr3, $0" : "=r"(cr3) : : : "intel", "volatile");
+    // Set the lowest 12 bits to zero because the address itself is page-aligned,
+    // and the lowest 12 bits may be used for flags.
+    PhysAddr(cr3 & !0xFFF)
 }
 
 #[cfg(test)]
