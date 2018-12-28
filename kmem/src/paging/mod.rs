@@ -3,9 +3,9 @@
 //! TODO: deallocate page tables when they become unused
 
 pub mod direct;
-pub mod tables;
 
-use self::tables::{PageTableEntry};
+use amd64::paging;
+use amd64::paging::{PageTableEntry};
 use crate::physical::alloc::PageFrameAllocator;
 use amd64::{Alignable, PhysAddr, VirtAddr};
 
@@ -36,7 +36,7 @@ pub unsafe fn mmap(vaddr: VirtAddr, paddr: PhysAddr, level: MappingLevel, pfa: &
         let current_level = 3 - i;
         let entry_addr = entry_at_level(current_level, vaddr);
         let entry: &mut PageTableEntry = &mut *entry_addr.as_mut_ptr();
-        if ! entry.flags().contains(tables::Flags::PRESENT) {
+        if ! entry.flags().contains(paging::Flags::PRESENT) {
             if current_level > mapping_level {
                 trace!("[VMM] allocating new page table at level {}", current_level);
                 // no entry on that level yet, allocate a table
@@ -44,7 +44,7 @@ pub unsafe fn mmap(vaddr: VirtAddr, paddr: PhysAddr, level: MappingLevel, pfa: &
                 // and assign it to the entry
                 let mut new_entry = PageTableEntry::new();
                 new_entry.set_base(new_table.start_address());
-                new_entry.set_flags(tables::Flags::PRESENT | tables::Flags::WRITABLE);
+                new_entry.set_flags(paging::Flags::PRESENT | paging::Flags::WRITABLE);
                 *entry = new_entry;
                 // make sure it's available
                 let new_table_addr = table_at_level(current_level - 1, vaddr);
@@ -56,12 +56,12 @@ pub unsafe fn mmap(vaddr: VirtAddr, paddr: PhysAddr, level: MappingLevel, pfa: &
                 // set the page table entry
                 let mut new_entry = PageTableEntry::new();
                 new_entry.set_base(paddr);
-                new_entry.set_flags(tables::Flags::PRESENT | tables::Flags::WRITABLE);
+                new_entry.set_flags(paging::Flags::PRESENT | paging::Flags::WRITABLE);
                 *entry = new_entry;
                 invalidate_address(vaddr);
                 break;
             }
-        } else if current_level > 0 && entry.flags().contains(tables::Flags::SIZE) {
+        } else if current_level > 0 && entry.flags().contains(paging::Flags::SIZE) {
             panic!("Address already mapped at a conflicting size")
         }
     }

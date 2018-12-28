@@ -2,6 +2,8 @@
 #![feature(asm)]
 
 #[macro_use]
+extern crate bitflags;
+#[macro_use]
 extern crate static_assertions;
 #[macro_use]
 extern crate log;
@@ -23,6 +25,7 @@ pub mod cpuid;
 pub mod pit;
 pub mod cmos;
 pub mod rtc;
+pub mod paging;
 
 pub use self::align::*;
 pub use self::addr::*;

@@ -1,4 +1,4 @@
-use amd64::PhysAddr;
+use crate::PhysAddr;
 
 /// An entry in a page table.
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
