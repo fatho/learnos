@@ -1,7 +1,7 @@
 //! KaaL - Kernel as a Library
 
-pub mod cmdline;
 pub mod mem;
+pub mod util;
 
 pub struct Kernel {
 }

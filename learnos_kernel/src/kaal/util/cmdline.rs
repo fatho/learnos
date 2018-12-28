@@ -101,7 +101,7 @@ mod test {
 
     fn test_instance(input: &str, output: Vec<CmdLineToken>)
     {
-        let mut c = CmdLine::parse(input);
+        let c = CmdLine::parse(input);
         let vec: Vec<CmdLineToken> = c.collect();
         assert_eq!(vec, output);
     }

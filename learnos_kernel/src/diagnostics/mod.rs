@@ -94,7 +94,7 @@ pub fn print_multiboot(mb2: &multiboot2::Multiboot2Info) {
     }
 
     info!("  CmdLine: {:?}", mb2.boot_cmd_line());
-    for tok in crate::kaal::cmdline::CmdLine::parse(mb2.boot_cmd_line().unwrap_or("")) {
+    for tok in crate::kaal::util::cmdline::CmdLine::parse(mb2.boot_cmd_line().unwrap_or("")) {
         debug!("  {:?}", tok)
     }
     info!("  Bootloader: {:?}", mb2.bootloader_name());

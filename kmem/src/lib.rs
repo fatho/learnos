@@ -66,6 +66,8 @@ impl<T> DerefMut for KBox<T> {
     }
 }
 
+unsafe impl<T: Send> Send for KBox<T> {}
+
 /// A fixed size array of possibly uninitialized values in manually managed kernel memory.
 pub struct KFixedVec<T> {
     ptr: *mut T,
@@ -155,3 +157,5 @@ impl<T> IndexMut<usize> for KFixedVec<T> {
         unsafe { &mut *self.ptr.add(idx) }
     }
 }
+
+unsafe impl<T: Send> Send for KFixedVec<T> {}
